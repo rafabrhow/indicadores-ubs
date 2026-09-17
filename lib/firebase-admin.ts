@@ -12,9 +12,15 @@ import path from "path";
 
 function carregarCredencial() {
   // Produção/Vercel:
-  // a credencial fica armazenada como variável de ambiente.
-  if (process.env.FIREBASE_SERVICE_ACCOUNT_JSON) {
-    return JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_JSON);
+  // a credencial fica armazenada em Base64 para evitar
+  // problemas com quebras de linha e caracteres especiais.
+  if (process.env.FIREBASE_SERVICE_ACCOUNT_BASE64) {
+    const json = Buffer.from(
+      process.env.FIREBASE_SERVICE_ACCOUNT_BASE64,
+      "base64",
+    ).toString("utf-8");
+
+    return JSON.parse(json);
   }
 
   // Desenvolvimento local:
@@ -24,10 +30,9 @@ function carregarCredencial() {
     : path.join(process.cwd(), "enfermagem.json");
 
   return JSON.parse(
-    fs.readFileSync(caminhoCredencial, "utf-8")
+    fs.readFileSync(caminhoCredencial, "utf-8"),
   );
 }
-
 const credencial = carregarCredencial();
 
 const adminApp =
