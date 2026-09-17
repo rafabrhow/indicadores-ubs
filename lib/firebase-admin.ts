@@ -10,13 +10,25 @@ import { getFirestore } from "firebase-admin/firestore";
 import fs from "fs";
 import path from "path";
 
-const caminhoCredencial = process.env.GOOGLE_APPLICATION_CREDENTIALS
-  ? path.resolve(process.env.GOOGLE_APPLICATION_CREDENTIALS)
-  : path.join(process.cwd(), "enfermagem.json");
+function carregarCredencial() {
+  // Produção/Vercel:
+  // a credencial fica armazenada como variável de ambiente.
+  if (process.env.FIREBASE_SERVICE_ACCOUNT_JSON) {
+    return JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_JSON);
+  }
 
-const credencial = JSON.parse(
-  fs.readFileSync(caminhoCredencial, "utf-8")
-);
+  // Desenvolvimento local:
+  // mantém compatibilidade com o enfermagem.json existente.
+  const caminhoCredencial = process.env.GOOGLE_APPLICATION_CREDENTIALS
+    ? path.resolve(process.env.GOOGLE_APPLICATION_CREDENTIALS)
+    : path.join(process.cwd(), "enfermagem.json");
+
+  return JSON.parse(
+    fs.readFileSync(caminhoCredencial, "utf-8")
+  );
+}
+
+const credencial = carregarCredencial();
 
 const adminApp =
   getApps().length > 0
