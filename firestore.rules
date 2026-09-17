@@ -1,0 +1,237 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // =========================================================
+    // FUNÇÕES DE SEGURANÇA
+    // =========================================================
+
+    // Verifica se existe usuário autenticado.
+    function usuarioAutenticado() {
+      return request.auth != null;
+    }
+
+    // Recupera os dados do usuário logado.
+    function dadosUsuario() {
+      return get(
+        /databases/$(database)/documents/usuarios/$(request.auth.uid)
+      ).data;
+    }
+
+    // Verifica se o usuário pertence à UBS informada.
+    function pertenceAUBS(ubsId) {
+      return usuarioAutenticado()
+        && dadosUsuario().ubsId == ubsId;
+    }
+
+    // Verifica se o usuário é uma enfermeira ativa.
+    function enfermeiraAtiva() {
+      return usuarioAutenticado()
+        && dadosUsuario().perfil == "enfermeira"
+        && dadosUsuario().ativo == true;
+    }
+
+    // Verifica se o usuário é um ACS ativo.
+    function acsAtivo() {
+      return usuarioAutenticado()
+        && dadosUsuario().perfil == "acs"
+        && dadosUsuario().ativo == true;
+    }
+
+    // Verifica enfermeira ativa pertencente à UBS.
+    function enfermeiraDaUBS(ubsId) {
+      return enfermeiraAtiva()
+        && dadosUsuario().ubsId == ubsId;
+    }
+
+    // Verifica ACS ativo pertencente à UBS.
+    function acsDaUBS(ubsId) {
+      return acsAtivo()
+        && dadosUsuario().ubsId == ubsId;
+    }
+
+
+    // =========================================================
+    // USUÁRIOS
+    // =========================================================
+
+    match /usuarios/{uid} {
+
+      // Cada usuário pode consultar somente seu próprio cadastro.
+      allow read: if usuarioAutenticado()
+        && request.auth.uid == uid;
+
+      // Criação/alteração/exclusão controladas pelo servidor.
+      allow create, update, delete: if false;
+    }
+
+
+    // =========================================================
+    // UBS
+    // =========================================================
+
+    match /ubs/{ubsId} {
+
+      // Usuário ativo da UBS pode consultar os dados da própria UBS.
+      allow read: if pertenceAUBS(ubsId)
+        && dadosUsuario().ativo == true;
+
+      // Alterações feitas exclusivamente pelas APIs/Admin SDK.
+      allow create, update, delete: if false;
+
+
+      // =======================================================
+      // PACIENTES
+      // =======================================================
+
+      match /pacientes/{pacienteId} {
+
+        // A tela de pacientes utiliza leitura direta.
+        // A gravação é feita pelas APIs/Admin SDK.
+        allow read: if enfermeiraDaUBS(ubsId);
+
+        allow create, update, delete: if false;
+      }
+
+
+      // =======================================================
+      // ACS
+      // =======================================================
+
+      match /acs/{acsId} {
+
+        // A equipe é administrada pela enfermeira.
+        allow read: if enfermeiraDaUBS(ubsId);
+
+        // Cadastro/alteração/exclusão pelo servidor.
+        allow create, update, delete: if false;
+      }
+
+
+      // =======================================================
+      // MICROÁREAS
+      // =======================================================
+
+      match /microareas/{microareaId} {
+
+        // Não há necessidade de escrita direta pelo cliente.
+        allow read: if enfermeiraDaUBS(ubsId);
+
+        allow create, update, delete: if false;
+      }
+
+
+      // =======================================================
+      // IMPORTAÇÕES PEC
+      // =======================================================
+
+      match /importacoesPEC/{importacaoId} {
+
+        // Histórico/importações podem ser consultados
+        // diretamente pela área administrativa.
+        allow read: if enfermeiraDaUBS(ubsId);
+
+        // Criação/alteração feita pela API/Admin SDK.
+        allow create, update, delete: if false;
+
+
+        // =====================================================
+        // REGISTROS DA IMPORTAÇÃO
+        // =====================================================
+
+        match /registros/{registroId} {
+
+          // Detalhamento dos registros PEC.
+          allow read: if enfermeiraDaUBS(ubsId);
+
+          // Registros são gravados pela importação via servidor.
+          allow create, update, delete: if false;
+        }
+      }
+
+
+      // =======================================================
+      // ATENDIMENTOS
+      // =======================================================
+
+      match /atendimentos/{atendimentoId} {
+
+        // Sem uso identificado de escrita direta pelo cliente.
+        allow read: if enfermeiraDaUBS(ubsId);
+
+        allow create, update, delete: if false;
+      }
+
+
+      // =======================================================
+      // ACOMPANHAMENTOS
+      // =======================================================
+
+      match /acompanhamentos/{acompanhamentoId} {
+
+        // Operações passam pelas APIs protegidas.
+        allow read: if enfermeiraDaUBS(ubsId);
+
+        allow create, update, delete: if false;
+      }
+
+
+      // =======================================================
+      // INDICADORES
+      // =======================================================
+
+      match /indicadores/{indicadorId} {
+
+        // Indicadores são processados pelas APIs/Admin SDK.
+        allow read: if enfermeiraDaUBS(ubsId);
+
+        allow create, update, delete: if false;
+      }
+
+
+      // =======================================================
+      // CACHE DO DASHBOARD
+      // =======================================================
+
+      match /cacheDashboard/{cacheId} {
+
+        // O Dashboard recebe o cache através da API.
+        // Não liberamos acesso direto ao navegador.
+        allow read, write: if false;
+      }
+
+
+      // =======================================================
+      // RESULTADOS MENSAIS DOS INDICADORES
+      // =======================================================
+
+      match /resultadosIndicadores/{resultadoId} {
+
+        // Persistência e consulta feitas pelo servidor.
+        allow read, write: if false;
+      }
+    }
+
+
+    // =========================================================
+    // CONFIGURAÇÕES GERAIS
+    // =========================================================
+
+    match /configuracoes/{configId} {
+
+      // Não existe necessidade de expor essa coleção
+      // diretamente ao cliente neste momento.
+      allow read, write: if false;
+    }
+
+
+    // =========================================================
+    // NEGAR QUALQUER OUTRO CAMINHO NÃO DECLARADO
+    // =========================================================
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

@@ -1,69 +1,96 @@
-import Image from "next/image";
+import { HeartPulse, Stethoscope, Users } from "lucide-react";
+import Link from "next/link";
 
 export default function Home() {
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
+    <main className="min-h-screen bg-[#F8F7FF] px-4 py-8">
+      <div className="mx-auto flex min-h-[90vh] w-full max-w-md flex-col justify-center">
+
+        {/* Logo */}
+        <div className="text-center">
+          <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-2xl bg-white shadow-sm">
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#7C3AED]">
+              <HeartPulse className="h-7 w-7 text-white" />
+            </div>
+          </div>
+
+          <h1 className="mt-5 text-3xl font-bold tracking-tight text-[#211A4A]">
+            Indicadores-UBS
           </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+
+          <p className="mt-2 text-sm text-slate-500">
+            Controle e acompanhamento de indicadores da UBS
           </p>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+
+        {/* Pergunta */}
+        <div className="mt-10 text-center">
+          <h2 className="text-2xl font-bold text-[#211A4A]">
+            Quem é você?
+          </h2>
+
+          <p className="mt-2 text-sm text-slate-500">
+            Selecione seu perfil para continuar
+          </p>
         </div>
-      </main>
-    </div>
+
+        {/* Perfis */}
+        <div className="mt-6 space-y-4">
+
+          {/* Enfermeira */}
+          <Link
+            href="/login"
+            className="group flex min-h-[116px] items-center gap-4 rounded-2xl border border-slate-200 bg-white p-5 transition-all hover:border-[#7C3AED]/30 hover:shadow-md"
+          >
+            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-[#EDE9FE]">
+              <Stethoscope className="h-7 w-7 text-[#7C3AED]" />
+            </div>
+
+            <div className="min-w-0 flex-1">
+              <h3 className="text-base font-bold text-[#211A4A]">
+                Enfermeira
+              </h3>
+
+              <p className="mt-1 text-sm leading-5 text-slate-500">
+                Gerencie pacientes e acompanhe os indicadores da UBS.
+              </p>
+            </div>
+
+            <span className="text-2xl text-slate-400 transition-transform group-hover:translate-x-1">
+              ›
+            </span>
+          </Link>
+
+          {/* ACS */}
+          <Link
+            href="/acs-login"
+            className="group flex min-h-[116px] items-center gap-4 rounded-2xl border border-slate-200 bg-white p-5 transition-all hover:border-emerald-300 hover:shadow-md"
+          >
+            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-emerald-50">
+              <Users className="h-7 w-7 text-emerald-500" />
+            </div>
+
+            <div className="min-w-0 flex-1">
+              <h3 className="text-base font-bold text-[#211A4A]">
+                Agente Comunitário de Saúde
+              </h3>
+
+              <p className="mt-1 text-sm leading-5 text-slate-500">
+                Consulte o acompanhamento dos pacientes da sua área.
+              </p>
+            </div>
+
+            <span className="text-2xl text-slate-400 transition-transform group-hover:translate-x-1">
+              ›
+            </span>
+          </Link>
+
+        </div>
+
+        <p className="mt-8 text-center text-xs text-slate-400">
+          Indicadores-UBS
+        </p>
+      </div>
+    </main>
   );
 }
