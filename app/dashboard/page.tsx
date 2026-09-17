@@ -231,7 +231,12 @@ export default function DashboardPage() {
   const [carregandoC1, setCarregandoC1] = useState(false);
 
   useEffect(() => {
-    if (carregando || !usuario) return;
+    if (carregando) return;
+
+    if (!usuario) {
+      router.replace("/login");
+      return;
+    }
 
     // O dashboard é exclusivo da enfermeira gestora.
     // O ACS deve permanecer na área operacional /acs.
@@ -792,21 +797,52 @@ export default function DashboardPage() {
 
         <section className="min-w-0 flex-1 pb-20 lg:pb-0">
 
-          {/* Cabeçalho */}
-          <header className="flex items-center justify-between px-7 py-5">
+          {/* =================================================
+              CABEÇALHO
+              Tablet: identidade visual do Brasil 360
+              Desktop: mantém o cabeçalho compacto
+          ================================================== */}
+          <header className="px-3 pt-3 sm:px-5 sm:pt-4 lg:px-7 lg:py-5">
 
-            <div>
+            <div
+              className="relative overflow-hidden rounded-[26px] border border-white/70 bg-gradient-to-br from-[#F5F3FF]/95 via-[#E9E4FF]/82 to-[#D8CCFF]/90 px-5 py-5 text-[#211A4A] shadow-[0_14px_35px_rgba(124,58,237,0.16),inset_0_1px_0_rgba(255,255,255,0.9),inset_0_-1px_0_rgba(124,58,237,0.08)] backdrop-blur-md sm:px-6 sm:py-6 lg:rounded-none lg:border-0 lg:bg-transparent lg:px-0 lg:py-0 lg:text-[#211A4A] lg:shadow-none lg:backdrop-blur-none"
+            >
+              {/* Elementos decorativos — profundidade 3D */}
+              <div className="pointer-events-none absolute -right-10 -top-12 h-36 w-36 rounded-full bg-[#8B5CF6]/18 shadow-[inset_8px_8px_18px_rgba(255,255,255,0.45),inset_-8px_-8px_18px_rgba(124,58,237,0.08)] lg:hidden" />
+              <div className="pointer-events-none absolute -bottom-16 right-20 h-32 w-32 rounded-full border border-[#8B5CF6]/15 bg-white/10 shadow-[inset_4px_4px_12px_rgba(255,255,255,0.5)] lg:hidden" />
+              <div className="pointer-events-none absolute inset-x-10 top-0 h-px bg-white/80 lg:hidden" />
 
-              <h1 className="text-lg font-bold text-[#211A4A]">
-                Olá, {primeiroNome} 👋
-              </h1>
+              <div className="relative z-10 flex items-start gap-4">
+                <div className="min-w-0">
 
-              <p className="mt-1 text-[9px] text-gray-400">
-                {ubs?.nome || "UBS"} •{" "}
-                {ubs?.municipio || ""}{" "}
-                {ubs?.uf ? `• ${ubs.uf}` : ""}
-              </p>
+                  <div className="mb-3 flex items-center">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/80 bg-white/45 shadow-[0_5px_12px_rgba(124,58,237,0.12),inset_0_1px_0_rgba(255,255,255,0.9)] backdrop-blur-sm lg:bg-[#EEE7FF] lg:shadow-none">
+                      <HeartPulse
+                        size={18}
+                        className="text-[#7C3AED]"
+                      />
+                    </div>
+                  </div>
 
+                  <h1 className="text-xl font-extrabold leading-tight text-[#211A4A] sm:text-2xl lg:text-lg lg:font-bold">
+                    Olá, {primeiroNome} <span aria-hidden="true">👋</span>
+                  </h1>
+
+                  <p className="mt-2 max-w-[90%] text-[10px] font-medium leading-relaxed text-[#5B527A] lg:mt-1 lg:max-w-none lg:text-[9px] lg:font-normal lg:text-gray-400">
+                    {ubs?.nome || "UBS"} •{" "}
+                    {ubs?.municipio || ""}{" "}
+                    {ubs?.uf ? `• ${ubs.uf}` : ""}
+                  </p>
+
+                </div>
+              </div>
+
+              <div className="relative z-10 mt-5 flex items-center gap-2 lg:hidden">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 shadow-[0_0_7px_rgba(52,211,153,0.45)]" />
+                <span className="text-[8px] font-medium text-[#625A80]">
+                  Painel da equipe de saúde
+                </span>
+              </div>
             </div>
 
           </header>

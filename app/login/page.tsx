@@ -163,7 +163,7 @@ export default function LoginPage() {
               </div>
 
               <h1 className="text-4xl font-bold tracking-tight">
-                Indicadores-UBS
+                Indicadores-UBS 
               </h1>
 
               <p className="mt-4 max-w-md text-lg leading-relaxed text-white/85">
@@ -173,7 +173,7 @@ export default function LoginPage() {
             </div>
 
             <p className="text-sm text-white/70">
-              Acesso seguro para profissionais autorizados.
+              Acesso seguro para profissionais autorizados. v1.5
             </p>
           </div>
 

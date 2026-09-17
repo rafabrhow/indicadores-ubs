@@ -12,6 +12,7 @@ import {
   MapPin,
   Save,
   Settings,
+  Type,
   ShieldCheck,
   UserRound,
   UsersRound,
@@ -39,6 +40,44 @@ export default function ConfigPage() {
     uf: "",
   });
 
+  const [fonteSistema, setFonteSistema] = useState("padrao");
+  const [tamanhoFonte, setTamanhoFonte] = useState("padrao");
+
+  const fontesSistema = [
+    {
+      id: "padrao",
+      nome: "Padrão",
+      familia: 'var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif',
+    },
+    {
+      id: "arial",
+      nome: "Arial",
+      familia: "Arial, sans-serif",
+    },
+    {
+      id: "verdana",
+      nome: "Verdana",
+      familia: "Verdana, sans-serif",
+    },
+    {
+      id: "tahoma",
+      nome: "Tahoma",
+      familia: "Tahoma, sans-serif",
+    },
+    {
+      id: "trebuchet",
+      nome: "Trebuchet MS",
+      familia: '"Trebuchet MS", sans-serif',
+    },
+  ];
+
+  const tamanhosFonte = [
+    { id: "pequena", nome: "Pequena", valor: "14px", escala: "0.875" },
+    { id: "padrao", nome: "Padrão", valor: "16px", escala: "1" },
+    { id: "grande", nome: "Grande", valor: "18px", escala: "1.125" },
+    { id: "extra-grande", nome: "Extra grande", valor: "20px", escala: "1.25" },
+  ];
+
   useEffect(() => {
     if (ubs) {
       setDadosUBS({
@@ -48,6 +87,16 @@ export default function ConfigPage() {
       });
     }
   }, [ubs]);
+
+  useEffect(() => {
+    const fonteSalva =
+      window.localStorage.getItem("brasil360_fonte_sistema_v1") || "padrao";
+    const tamanhoSalvo =
+      window.localStorage.getItem("brasil360_tamanho_fonte_v1") || "padrao";
+
+    setFonteSistema(fonteSalva);
+    setTamanhoFonte(tamanhoSalvo);
+  }, []);
 
   useEffect(() => {
     if (carregando) return;
@@ -91,6 +140,36 @@ export default function ConfigPage() {
   function reverTour() {
     window.localStorage.removeItem("brasil360_tour_enfermeira_v1");
     router.push("/dashboard");
+  }
+
+  function alterarFonteSistema(id: string) {
+    const fonte = fontesSistema.find((item) => item.id === id);
+
+    if (!fonte) return;
+
+    setFonteSistema(id);
+    window.localStorage.setItem("brasil360_fonte_sistema_v1", id);
+
+    document.documentElement.style.setProperty(
+      "--brasil360-font-family",
+      fonte.familia,
+    );
+    document.documentElement.style.fontFamily = fonte.familia;
+  }
+
+  function alterarTamanhoFonte(id: string) {
+    const tamanho = tamanhosFonte.find((item) => item.id === id);
+
+    if (!tamanho) return;
+
+    setTamanhoFonte(id);
+    window.localStorage.setItem("brasil360_tamanho_fonte_v1", id);
+
+    document.documentElement.style.setProperty(
+      "--brasil360-font-scale",
+      tamanho.escala,
+    );
+    document.documentElement.style.fontSize = tamanho.valor;
   }
 
   async function salvarConfiguracaoUBS() {
@@ -308,6 +387,104 @@ export default function ConfigPage() {
               </div>
             </button>
 
+            <section className="group relative mt-4 overflow-hidden rounded-2xl border border-amber-100 bg-gradient-to-br from-amber-50/60 via-white to-orange-50/30 p-5 shadow-sm transition duration-200 hover:-translate-y-1 hover:border-amber-200 hover:shadow-lg hover:shadow-amber-100/60">
+              <div className="pointer-events-none absolute -right-8 -top-8 h-24 w-24 rounded-full bg-amber-200/30 blur-2xl transition duration-200 group-hover:scale-125" />
+
+              <div className="relative flex items-start gap-4">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-amber-100">
+                  <Type size={21} className="text-amber-600" />
+                </div>
+
+                <div className="min-w-0 flex-1">
+                  <h2 className="text-sm font-bold text-[#211A4A]">
+                    Fonte do sistema
+                  </h2>
+
+                  <p className="mt-1 text-xs leading-relaxed text-gray-500">
+                    Escolha a fonte utilizada nas telas do Brasil 360. A
+                    preferência fica salva neste dispositivo.
+                  </p>
+
+                  <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-5">
+                    {fontesSistema.map((fonte) => {
+                      const selecionada = fonteSistema === fonte.id;
+
+                      return (
+                        <button
+                          key={fonte.id}
+                          type="button"
+                          onClick={() => alterarFonteSistema(fonte.id)}
+                          className={`rounded-xl border px-3 py-2.5 text-left transition ${
+                            selecionada
+                              ? "border-[#7C3AED] bg-[#EEE7FF] text-[#5B21B6] shadow-sm"
+                              : "border-gray-200 bg-white text-gray-600 hover:-translate-y-0.5 hover:border-violet-200 hover:bg-violet-50/40"
+                          }`}
+                          style={{ fontFamily: fonte.familia }}
+                        >
+                          <span className="block text-[11px] font-bold">
+                            {fonte.nome}
+                          </span>
+                          <span className="mt-0.5 block text-[9px] opacity-70">
+                            Aa Bb 123
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            </section>
+
+
+            <section className="group relative mt-4 overflow-hidden rounded-2xl border border-blue-100 bg-gradient-to-br from-blue-50/60 via-white to-indigo-50/30 p-5 shadow-sm transition duration-200 hover:-translate-y-1 hover:border-blue-200 hover:shadow-lg hover:shadow-blue-100/60">
+              <div className="pointer-events-none absolute -right-8 -top-8 h-24 w-24 rounded-full bg-blue-200/30 blur-2xl transition duration-200 group-hover:scale-125" />
+
+              <div className="relative flex items-start gap-4">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-blue-100">
+                  <Type size={21} className="text-blue-600" />
+                </div>
+
+                <div className="min-w-0 flex-1">
+                  <h2 className="text-sm font-bold text-[#211A4A]">
+                    Tamanho da fonte
+                  </h2>
+
+                  <p className="mt-1 text-xs leading-relaxed text-gray-500">
+                    Aumente ou diminua o tamanho dos textos para facilitar a leitura.
+                  </p>
+
+                  <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                    {tamanhosFonte.map((tamanho) => {
+                      const selecionado = tamanhoFonte === tamanho.id;
+
+                      return (
+                        <button
+                          key={tamanho.id}
+                          type="button"
+                          onClick={() => alterarTamanhoFonte(tamanho.id)}
+                          className={`rounded-xl border px-3 py-2.5 text-left transition ${
+                            selecionado
+                              ? "border-[#7C3AED] bg-[#EEE7FF] text-[#5B21B6] shadow-sm"
+                              : "border-gray-200 bg-white text-gray-600 hover:-translate-y-0.5 hover:border-blue-200 hover:bg-blue-50/40"
+                          }`}
+                        >
+                          <span
+                            className="block font-bold"
+                            style={{ fontSize: tamanho.valor }}
+                          >
+                            Aa
+                          </span>
+                          <span className="mt-1 block text-[10px] font-semibold">
+                            {tamanho.nome}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            </section>
+
             <section className="group relative mt-4 overflow-hidden rounded-2xl border border-emerald-100 bg-gradient-to-br from-emerald-50/60 via-white to-cyan-50/30 p-5 shadow-sm transition duration-200 hover:-translate-y-1 hover:border-emerald-200 hover:shadow-lg hover:shadow-emerald-100/60"> 
               <div className="pointer-events-none absolute -right-8 -top-8 h-24 w-24 rounded-full bg-emerald-200/30 blur-2xl transition duration-200 group-hover:scale-125" />
               <div className="relative flex items-start justify-between gap-4">
@@ -342,6 +519,7 @@ export default function ConfigPage() {
                 </button>
               </div>
             </section>
+
 
             <button
               type="button"
