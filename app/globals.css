@@ -14,7 +14,7 @@
   /* Fonte principal do sistema.
      Usamos uma fonte sem serifa para manter o visual
      moderno e próximo do aplicativo modelo. */
-  --font-sans: Arial, Helvetica, sans-serif;
+--font-sans: var(--brasil360-font-family);
 
   /* Fonte utilizada para código e informações técnicas. */
   --font-mono: var(--font-geist-mono);
@@ -22,7 +22,7 @@
   /* Fonte dos títulos.
      Mantemos a mesma família da interface para uma aparência
      mais limpa e consistente. */
-  --font-heading: Arial, Helvetica, sans-serif;
+--font-heading: var(--brasil360-font-family);
 
   /* Cores utilizadas pelos componentes do shadcn. */
   --color-background: var(--background);
@@ -195,15 +195,15 @@
    * para uma fonte serifada.
    */
   body {
-    @apply bg-background text-foreground;
+  @apply bg-background text-foreground;
 
-    font-family: Arial, Helvetica, sans-serif;
-  }
+  font-family: var(--brasil360-font-family);
+}
 
   /*
    * Define a mesma fonte para toda a página.
    */
   html {
-    font-family: Arial, Helvetica, sans-serif;
-  }
+  font-family: var(--brasil360-font-family);
+}
 }
