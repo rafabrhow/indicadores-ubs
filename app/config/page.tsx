@@ -13,7 +13,7 @@ import {
   Save,
   Settings,
   Type,
-  ShieldCheck,
+  HeartPulse,
   UserRound,
   UsersRound,
   X,
@@ -261,12 +261,21 @@ export default function ConfigPage() {
         <aside className="hidden w-[150px] shrink-0 flex-col border-r border-[#E7E2F2] bg-white lg:flex">
           <div className="border-b border-[#E7E2F2] px-4 py-5">
             <div className="flex items-center gap-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#7C3AED]">
-                <ShieldCheck size={17} className="text-white" />
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#003B8E]">
+                 <img
+                src="/brasil360-logo-header.png"
+                alt="Brasil 360"
+                className="h-14 w-[88px] object-contain"
+              />
               </div>
-              <span className="text-[11px] font-bold text-[#4C1D95]">
-                Indicadores
-              </span>
+              <div className="min-w-0">
+                <p className="text-[11px] font-black tracking-tight text-[#003B8E]">
+                  BR<span className="text-[#00A9E8]">3</span><span className="text-[#009C3B]">6</span><span className="text-[#F2C300]">0</span>
+                </p>
+                <p className="text-[7px] font-semibold uppercase tracking-wide text-[#003B8E]">
+                  Indicadores
+                </p>
+              </div>
             </div>
 
             <p className="mt-4 text-[8px] font-bold uppercase tracking-wide text-[#7C3AED]">
@@ -339,17 +348,33 @@ export default function ConfigPage() {
         </aside>
 
         <section className="min-w-0 flex-1 pb-20 lg:pb-0">
-          <header className="rounded-b-[24px] bg-gradient-to-r from-[#7C3AED] to-[#5B21B6] px-8 py-6 text-white">
-            <p className="text-[11px] font-medium text-white/75">
-              Enfermeira Gestora
-            </p>
+          <header className="relative isolate overflow-hidden rounded-b-[28px] border border-emerald-200/60 bg-gradient-to-br from-[#009C3B]/95 via-[#00A9E8]/85 to-[#F2C300]/85 px-8 py-6 text-white shadow-[0_12px_30px_rgba(0,156,59,0.18),0_5px_12px_rgba(0,59,142,0.12)] backdrop-blur-md">
+            <div className="pointer-events-none absolute -left-10 -top-14 h-32 w-32 rounded-full bg-white/20 blur-2xl" />
+            <div className="pointer-events-none absolute right-8 -top-16 h-40 w-40 rounded-full bg-[#F2C300]/25 blur-3xl" />
+            <div className="pointer-events-none absolute bottom-[-70px] left-1/2 h-40 w-64 -translate-x-1/2 rounded-full bg-[#00A9E8]/20 blur-3xl" />
 
-            <h1 className="mt-1 text-2xl font-bold">Configuração</h1>
+            <div className="relative">
+              <p className="text-[11px] font-semibold text-white/85">
+                Enfermeira Gestora
+              </p>
 
-            <p className="mt-1 text-[10px] text-white/80">
-              {dadosUBS.nome || "UBS"} — {dadosUBS.municipio || ""}
-              {dadosUBS.uf ? ` • ${dadosUBS.uf}` : ""}
-            </p>
+              <h1 className="mt-1 text-2xl font-bold tracking-tight drop-shadow-sm">
+                Configuração
+              </h1>
+
+              <p className="mt-1 text-[10px] text-white/90">
+                {dadosUBS.nome || "UBS"} — {dadosUBS.municipio || ""}
+                {dadosUBS.uf ? ` • ${dadosUBS.uf}` : ""}
+              </p>
+            </div>
+
+            <img
+              src="/brasil360-logo-header.png"
+              alt="Brasil 360"
+              width={88}
+              height={88}
+              className="absolute right-5 top-1/2 h-16 w-16 -translate-y-1/2 rounded-2xl object-cover shadow-[0_8px_18px_rgba(0,59,142,0.22)] ring-1 ring-white/50 sm:h-20 sm:w-20"
+            />
           </header>
 
           <div className="px-7 py-7">

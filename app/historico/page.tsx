@@ -6,7 +6,6 @@ import {
   ChevronLeft,
   ChevronRight,
   Clock3,
-  Download,
   Eye,
   FileBarChart,
   FileText,
@@ -21,6 +20,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { auth } from "@/lib/firebase";
 import { useAuth } from "@/context/AuthContext";
+import LoadingBrasil360 from "@/components/ui/LoadingBrasil360";
 
 type Importacao = {
   id: string;
@@ -186,7 +186,7 @@ function estiloTipo(tipo: string) {
 
 export default function HistoricoPage() {
   const router = useRouter();
-  const { usuario, carregando } = useAuth();
+  const { usuario, ubs, carregando } = useAuth();
 
   const [dados, setDados] = useState<ResultadoHistorico | null>(null);
   const [carregandoHistorico, setCarregandoHistorico] = useState(true);
@@ -202,13 +202,24 @@ export default function HistoricoPage() {
 
   const porPagina = 10;
 
+  // Redirecionamento de autenticação fica separado do carregamento da página.
+  // Isso evita atualizar o Router durante o render do componente.
   useEffect(() => {
-    if (carregando || !usuario) return;
+    if (carregando) return;
+
+    if (!usuario) {
+      router.replace("/login");
+      return;
+    }
 
     if (usuario.perfil !== "enfermeira") {
       router.replace("/acs");
-      return;
     }
+  }, [carregando, usuario, router]);
+
+  // Carrega somente o histórico depois que a autenticação/perfil estiverem resolvidos.
+  useEffect(() => {
+    if (carregando || !usuario || usuario.perfil !== "enfermeira") return;
 
     async function carregar() {
       try {
@@ -218,8 +229,7 @@ export default function HistoricoPage() {
         const usuarioFirebase = auth.currentUser;
 
         if (!usuarioFirebase) {
-          router.replace("/login");
-          return;
+          throw new Error("Sessão de autenticação não encontrada.");
         }
 
         const token = await usuarioFirebase.getIdToken();
@@ -242,6 +252,8 @@ export default function HistoricoPage() {
 
         if (resultado.importacoes?.length) {
           setSelecionada(resultado.importacoes[0]);
+        } else {
+          setSelecionada(null);
         }
       } catch (error) {
         setErro(
@@ -255,7 +267,7 @@ export default function HistoricoPage() {
     }
 
     carregar();
-  }, [carregando, usuario, router]);
+  }, [carregando, usuario]);
 
   const tipos = useMemo(() => {
     const lista = dados?.importacoes ?? [];
@@ -358,25 +370,15 @@ export default function HistoricoPage() {
   }
 
   if (carregando || carregandoHistorico) {
-    return (
-      <main className="flex min-h-screen items-center justify-center bg-[#F8F7FF]">
-        <div className="rounded-2xl bg-white px-8 py-7 text-center shadow-sm ring-1 ring-[#E7E2F2]">
-          <History className="mx-auto h-7 w-7 animate-pulse text-[#7C3AED]" />
-          <p className="mt-3 text-sm font-bold text-[#4C1D95]">
-            Carregando histórico...
-          </p>
-          <p className="mt-1 text-[10px] text-gray-400">
-            Buscando as importações da UBS.
-          </p>
-        </div>
-      </main>
-    );
-  }
+  return (
+    <LoadingBrasil360
+      mensagem="Carregando histórico..."
+      subtitulo="Buscando as importações da UBS"
+    />
+  );
+}
 
-  if (!usuario) {
-    router.replace("/login");
-    return null;
-  }
+  if (!usuario) return null;
 
   const estatisticas = dados?.estatisticas ?? {
     totalImportacoes: 0,
@@ -391,25 +393,29 @@ export default function HistoricoPage() {
       : 0;
 
   return (
-    <main className="min-h-screen bg-[#F8F7FF] text-[#211A4A] print:bg-white">
+    <main className="min-h-screen bg-[#F8F7FC] text-[#211A4A] print:bg-white">
       <div className="mx-auto min-h-screen max-w-[1500px] lg:flex">
         {/* SIDEBAR */}
-        <aside className="hidden w-[190px] shrink-0 flex-col border-r border-[#E7E2F2] bg-white lg:flex print:hidden">
-          <div className="border-b border-[#E7E2F2] px-4 py-5">
+        <aside className="hidden w-[190px] shrink-0 flex-col border-r border-[#E8E1F5] bg-white lg:flex print:hidden">
+          <div className="border-b border-[#E8E1F5] px-4 py-4">
             <div className="flex items-center gap-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#7C3AED]">
-                <FileBarChart size={17} className="text-white" />
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#003B8E] text-white shadow-[0_3px_8px_rgba(0,59,142,0.22)]">
+                 <img
+                src="/brasil360-logo-header.png"
+                alt="Brasil 360"
+                className="h-14 w-[88px] object-contain"
+              />
               </div>
-              <div>
-                <p className="text-[11px] font-bold text-[#4C1D95]">
-                  Indicadores
+              <div className="min-w-0">
+                <p className="text-[11px] font-black tracking-tight text-[#003B8E]">
+                  BR<span className="text-[#00A9E8]">3</span><span className="text-[#009C3B]">6</span><span className="text-[#F2C300]">0</span>
                 </p>
-                <p className="text-[7px] font-semibold uppercase tracking-wide text-[#7C3AED]">
-                  Brasil 360
+                <p className="text-[7px] font-semibold uppercase tracking-wide text-[#003B8E]">
+                  Indicadores
                 </p>
               </div>
             </div>
-            <p className="mt-4 text-[8px] font-bold uppercase tracking-wide text-[#7C3AED]">
+            <p className="mt-4 text-[8px] font-bold uppercase tracking-wide text-[#6D28D9]">
               Enfermeira Gestora
             </p>
           </div>
@@ -418,7 +424,7 @@ export default function HistoricoPage() {
             <button
               type="button"
               onClick={() => router.push("/dashboard")}
-              className="mb-2 flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left text-[10px] text-gray-500 transition hover:bg-[#F8F7FF]"
+              className="mb-2 flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left text-[10px] text-gray-500 transition hover:bg-[#F4F0FF]"
             >
               <FileBarChart size={15} />
               Início
@@ -427,7 +433,7 @@ export default function HistoricoPage() {
             <button
               type="button"
               onClick={() => router.push("/equipe")}
-              className="mb-2 flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left text-[10px] text-gray-500 transition hover:bg-[#F8F7FF]"
+              className="mb-2 flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left text-[10px] text-gray-500 transition hover:bg-[#F4F0FF]"
             >
               <Upload size={15} />
               Equipe
@@ -435,7 +441,7 @@ export default function HistoricoPage() {
 
             <button
               type="button"
-              className="mb-2 flex w-full items-center gap-3 rounded-lg bg-[#EEE7FF] px-3 py-3 text-left text-[10px] font-semibold text-[#7C3AED]"
+              className="mb-2 flex w-full items-center gap-3 rounded-lg bg-[#EDE9FE] px-3 py-3 text-left text-[10px] font-semibold text-[#6D28D9]"
             >
               <History size={15} />
               Histórico
@@ -444,7 +450,7 @@ export default function HistoricoPage() {
             <button
               type="button"
               onClick={() => router.push("/config")}
-              className="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left text-[10px] text-gray-500 transition hover:bg-[#F8F7FF]"
+              className="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left text-[10px] text-gray-500 transition hover:bg-[#F4F0FF]"
             >
               <Settings size={15} />
               Config
@@ -454,36 +460,29 @@ export default function HistoricoPage() {
 
         {/* CONTEÚDO */}
         <section className="min-w-0 flex-1 pb-20 lg:pb-0">
-          <header className="flex items-center justify-between px-5 py-5 sm:px-7 print:hidden">
-            <div>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => router.push("/dashboard")}
-                  className="rounded-lg p-1.5 text-gray-400 hover:bg-white hover:text-[#7C3AED] lg:hidden"
-                >
-                  <ChevronLeft size={18} />
-                </button>
-                <h1 className="text-lg font-bold text-[#211A4A] sm:text-xl">
+          <header>
+            <div className="relative isolate overflow-hidden rounded-b-[28px] border border-emerald-200/60 bg-gradient-to-br from-[#009C3B]/95 via-[#00A9E8]/85 to-[#F2C300]/85 px-8 py-6 text-white shadow-[0_12px_30px_rgba(0,156,59,0.18),0_5px_12px_rgba(0,59,142,0.12)] backdrop-blur-md">
+              <div className="pointer-events-none absolute -left-10 -top-14 h-32 w-32 rounded-full bg-white/20 blur-2xl" />
+              <div className="pointer-events-none absolute right-8 -top-16 h-40 w-40 rounded-full bg-[#F2C300]/25 blur-3xl" />
+              <div className="pointer-events-none absolute bottom-[-70px] left-1/2 h-40 w-64 -translate-x-1/2 rounded-full bg-[#00A9E8]/20 blur-3xl" />
+
+              <div className="relative">
+                <p className="text-[11px] font-semibold text-white/85">
+                  Enfermeira Gestora
+                </p>
+
+                <h1 className="mt-1 text-2xl font-bold tracking-tight drop-shadow-sm">
                   Histórico
                 </h1>
-              </div>
-              <p className="mt-1 text-[9px] text-gray-400 sm:text-[10px]">
-                Acompanhe todas as importações e processamentos de dados
-              </p>
-            </div>
 
-            <button
-              type="button"
-              onClick={exportarResumo}
-              className="hidden items-center gap-2 rounded-xl bg-gradient-to-r from-[#7C3AED] via-[#8B5CF6] to-[#6366F1] px-4 py-2.5 text-[10px] font-bold text-white shadow-md shadow-violet-200 transition hover:-translate-y-0.5 hover:shadow-lg sm:flex"
-            >
-              <Download size={14} />
-              Exportar PDF
-            </button>
+                <p className="mt-1 text-[10px] text-white/90">
+                  {ubs?.nome || "UBS"} • {ubs?.municipio || ""} {ubs?.uf ? `• ${ubs.uf}` : ""}
+                </p>
+              </div>
+            </div>
           </header>
 
-          <div className="px-5 pb-8 sm:px-7 print:hidden">
+          <div className="px-5 pt-5 pb-8 sm:px-7 print:hidden">
             {erro && (
               <div className="mb-4 flex items-center gap-3 rounded-2xl border border-red-100 bg-red-50 p-4 text-red-600">
                 <AlertCircle size={18} />
@@ -493,25 +492,25 @@ export default function HistoricoPage() {
 
             {/* CARDS */}
             <section className="grid grid-cols-2 gap-3 xl:grid-cols-4">
-              <div className="relative overflow-hidden rounded-2xl border border-violet-200 bg-gradient-to-br from-violet-50 via-white to-purple-50 p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
-                <div className="absolute -right-5 -top-5 h-20 w-20 rounded-full bg-violet-200/40 blur-xl" />
-                <div className="relative flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 shadow-sm shadow-violet-200">
+              <div className="relative overflow-hidden rounded-2xl border border-violet-200 bg-gradient-to-br from-violet-50 via-white to-blue-50 p-4 shadow-[0_5px_12px_rgba(124,58,237,0.12),0_2px_4px_rgba(0,0,0,0.05)] transition-all duration-200 hover:-translate-y-1 hover:shadow-[0_14px_26px_rgba(124,58,237,0.18),0_5px_10px_rgba(0,0,0,0.08)]">
+                <div className="absolute -right-5 -top-5 h-20 w-20 rounded-full bg-blue-200/40 blur-xl" />
+                <div className="relative flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-[#6D28D9] to-[#2563EB] shadow-[0_5px_10px_rgba(109,40,217,0.28)]">
                   <History size={17} className="text-white" />
                 </div>
-                <p className="relative mt-3 text-2xl font-bold text-violet-900">
+                <p className="relative mt-3 text-2xl font-bold text-[#211A4A]">
                   {estatisticas.totalImportacoes}
                 </p>
-                <p className="relative mt-1 text-[9px] font-semibold text-violet-700/80">
+                <p className="relative mt-1 text-[9px] font-semibold text-[#5B21B6]">
                   Total de importações
                 </p>
-                <p className="relative mt-1 text-[8px] text-violet-500">
+                <p className="relative mt-1 text-[8px] text-[#7C3AED]">
                   Todas as importações
                 </p>
               </div>
 
-              <div className="relative overflow-hidden rounded-2xl border border-emerald-200 bg-gradient-to-br from-emerald-50 via-white to-green-50 p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
+              <div className="relative overflow-hidden rounded-2xl border border-emerald-200 bg-gradient-to-br from-emerald-50 via-white to-green-50 p-4 shadow-[0_5px_12px_rgba(16,185,129,0.12),0_2px_4px_rgba(0,0,0,0.05)] transition-all duration-200 hover:-translate-y-1 hover:shadow-[0_14px_26px_rgba(16,185,129,0.18),0_5px_10px_rgba(0,0,0,0.08)]">
                 <div className="absolute -right-5 -top-5 h-20 w-20 rounded-full bg-emerald-200/40 blur-xl" />
-                <div className="relative flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 to-green-500 shadow-sm shadow-emerald-200">
+                <div className="relative flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 to-green-500 shadow-[0_5px_10px_rgba(16,185,129,0.25)]">
                   <CheckCircle2 size={17} className="text-white" />
                 </div>
                 <p className="relative mt-3 text-2xl font-bold text-emerald-900">
@@ -525,50 +524,50 @@ export default function HistoricoPage() {
                 </p>
               </div>
 
-              <div className="relative overflow-hidden rounded-2xl border border-amber-200 bg-gradient-to-br from-amber-50 via-white to-orange-50 p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
+              <div className="relative overflow-hidden rounded-2xl border border-amber-200 bg-gradient-to-br from-amber-50 via-white to-orange-50 p-4 shadow-[0_5px_12px_rgba(245,158,11,0.12),0_2px_4px_rgba(0,0,0,0.05)] transition-all duration-200 hover:-translate-y-1 hover:shadow-[0_14px_26px_rgba(245,158,11,0.18),0_5px_10px_rgba(0,0,0,0.08)]">
                 <div className="absolute -right-5 -top-5 h-20 w-20 rounded-full bg-amber-200/40 blur-xl" />
-                <div className="relative flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 shadow-sm shadow-amber-200">
+                <div className="relative flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-amber-400 to-amber-500 shadow-[0_5px_10px_rgba(245,158,11,0.25)]">
                   <AlertCircle size={17} className="text-white" />
                 </div>
-                <p className="relative mt-3 text-2xl font-bold text-amber-900">
+                <p className="relative mt-3 text-2xl font-bold text-yellow-900">
                   {estatisticas.comPendencias}
                 </p>
-                <p className="relative mt-1 text-[9px] font-semibold text-amber-700/80">
+                <p className="relative mt-1 text-[9px] font-semibold text-yellow-800/80">
                   Com pendências
                 </p>
-                <p className="relative mt-1 text-[8px] font-bold text-amber-500">
+                <p className="relative mt-1 text-[8px] font-bold text-yellow-700">
                   {percentualPendencias.toFixed(1)}% do total
                 </p>
               </div>
 
-              <div className="relative overflow-hidden rounded-2xl border border-sky-200 bg-gradient-to-br from-sky-50 via-white to-indigo-50 p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
+              <div className="relative overflow-hidden rounded-2xl border border-sky-200 bg-gradient-to-br from-sky-50 via-white to-cyan-50 p-4 shadow-[0_5px_12px_rgba(6,182,212,0.12),0_2px_4px_rgba(0,0,0,0.05)] transition-all duration-200 hover:-translate-y-1 hover:shadow-[0_14px_26px_rgba(6,182,212,0.18),0_5px_10px_rgba(0,0,0,0.08)]">
                 <div className="absolute -right-5 -top-5 h-20 w-20 rounded-full bg-sky-200/40 blur-xl" />
-                <div className="relative flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-sky-500 to-indigo-500 shadow-sm shadow-sky-200">
+                <div className="relative flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-cyan-500 to-blue-500 shadow-[0_5px_10px_rgba(6,182,212,0.25)]">
                   <CalendarDays size={17} className="text-white" />
                 </div>
-                <p className="relative mt-3 text-sm font-bold text-indigo-900">
+                <p className="relative mt-3 text-sm font-bold text-[#211A4A]">
                   {estatisticas.ultimaImportacao
                     ? formatarData(estatisticas.ultimaImportacao.data)
                     : "—"}
                 </p>
-                <p className="relative mt-1 text-[9px] font-semibold text-sky-700/80">
+                <p className="relative mt-1 text-[9px] font-semibold text-cyan-800/80">
                   Última importação
                 </p>
-                <p className="relative mt-1 truncate text-[8px] text-sky-500">
+                <p className="relative mt-1 truncate text-[8px] text-cyan-700">
                   {estatisticas.ultimaImportacao?.arquivoNome || "Nenhuma"}
                 </p>
               </div>
             </section>
 
             {/* FILTROS */}
-            <section className="mt-4 rounded-2xl border border-violet-100 bg-gradient-to-br from-white to-violet-50/40 p-4 shadow-sm">
+            <section className="mt-4 rounded-2xl border border-violet-200 bg-gradient-to-br from-white via-white to-violet-50/70 p-4 shadow-[0_5px_14px_rgba(124,58,237,0.08)]">
               <div className="mb-3 flex items-center gap-2">
-                <Filter size={14} className="text-[#7C3AED]" />
+                <Filter size={14} className="text-[#6D28D9]" />
                 <h2 className="text-[10px] font-bold">Filtros</h2>
                 <button
                   type="button"
                   onClick={limparFiltros}
-                  className="ml-auto text-[8px] font-semibold text-[#7C3AED]"
+                  className="ml-auto text-[8px] font-semibold text-[#6D28D9]"
                 >
                   Limpar filtros
                 </button>
@@ -588,7 +587,7 @@ export default function HistoricoPage() {
                       type="date"
                       value={dataInicial}
                       onChange={(e) => setDataInicial(e.target.value)}
-                      className="h-9 w-full rounded-lg border border-gray-200 bg-[#FAF9FD] pl-9 pr-2 text-[9px] outline-none focus:border-[#A78BFA]"
+                      className="h-9 w-full rounded-lg border border-gray-200 bg-[#F8FBFD] pl-9 pr-2 text-[9px] outline-none focus:border-[#7C3AED]"
                     />
                   </div>
                 </label>
@@ -606,7 +605,7 @@ export default function HistoricoPage() {
                       type="date"
                       value={dataFinal}
                       onChange={(e) => setDataFinal(e.target.value)}
-                      className="h-9 w-full rounded-lg border border-gray-200 bg-[#FAF9FD] pl-9 pr-2 text-[9px] outline-none focus:border-[#A78BFA]"
+                      className="h-9 w-full rounded-lg border border-gray-200 bg-[#F8FBFD] pl-9 pr-2 text-[9px] outline-none focus:border-[#7C3AED]"
                     />
                   </div>
                 </label>
@@ -618,7 +617,7 @@ export default function HistoricoPage() {
                   <select
                     value={tipoFiltro}
                     onChange={(e) => setTipoFiltro(e.target.value)}
-                    className="h-9 w-full rounded-lg border border-gray-200 bg-[#FAF9FD] px-3 text-[9px] outline-none focus:border-[#A78BFA]"
+                    className="h-9 w-full rounded-lg border border-gray-200 bg-[#F8FBFD] px-3 text-[9px] outline-none focus:border-[#7C3AED]"
                   >
                     {tipos.map((tipo) => (
                       <option key={tipo} value={tipo}>
@@ -635,7 +634,7 @@ export default function HistoricoPage() {
                   <select
                     value={statusFiltro}
                     onChange={(e) => setStatusFiltro(e.target.value)}
-                    className="h-9 w-full rounded-lg border border-gray-200 bg-[#FAF9FD] px-3 text-[9px] outline-none focus:border-[#A78BFA]"
+                    className="h-9 w-full rounded-lg border border-gray-200 bg-[#F8FBFD] px-3 text-[9px] outline-none focus:border-[#7C3AED]"
                   >
                     <option value="Todos">Todos</option>
                     <option value="Concluídas">Concluídas</option>
@@ -657,7 +656,7 @@ export default function HistoricoPage() {
                       value={busca}
                       onChange={(e) => setBusca(e.target.value)}
                       placeholder="Arquivo, usuário ou temática..."
-                      className="h-9 w-full rounded-lg border border-gray-200 bg-[#FAF9FD] pl-9 pr-3 text-[9px] outline-none placeholder:text-gray-400 focus:border-[#A78BFA]"
+                      className="h-9 w-full rounded-lg border border-gray-200 bg-[#F8FBFD] pl-9 pr-3 text-[9px] outline-none placeholder:text-gray-400 focus:border-[#7C3AED]"
                     />
                   </div>
                 </label>
@@ -665,10 +664,10 @@ export default function HistoricoPage() {
             </section>
 
             {/* TABELA */}
-            <section className="mt-4 overflow-hidden rounded-2xl border border-violet-100 bg-white shadow-sm shadow-violet-100/50">
-              <div className="flex items-center justify-between border-b border-violet-100 bg-gradient-to-r from-violet-50/70 via-white to-indigo-50/50 px-4 py-3">
+            <section className="mt-4 overflow-hidden rounded-2xl border border-violet-200 bg-white shadow-[0_5px_14px_rgba(124,58,237,0.08)]">
+              <div className="flex items-center justify-between border-b border-violet-100 bg-gradient-to-r from-blue-50/70 via-white to-indigo-50/50 px-4 py-3">
                 <div>
-                  <h2 className="text-[11px] font-bold text-violet-950">Importações</h2>
+                  <h2 className="text-[11px] font-bold text-[#211A4A]">Importações</h2>
                   <p className="mt-0.5 text-[8px] text-gray-400">
                     {filtradas.length} registro(s) encontrado(s)
                   </p>
@@ -696,7 +695,7 @@ export default function HistoricoPage() {
                   <div className="hidden overflow-x-auto md:block">
                     <table className="w-full min-w-[900px] border-collapse">
                       <thead>
-                        <tr className="bg-[#FAF9FD] text-left">
+                        <tr className="bg-[#F8FBFD] text-left">
                           {[
                             "Data",
                             "Arquivo",
@@ -711,7 +710,7 @@ export default function HistoricoPage() {
                           ].map((titulo) => (
                             <th
                               key={titulo}
-                              className="border-b border-[#E7E2F2] px-3 py-3 text-[8px] font-bold text-gray-500"
+                              className="border-b border-[#E8E1F5] px-3 py-3 text-[8px] font-bold text-gray-500"
                             >
                               {titulo}
                             </th>
@@ -745,7 +744,7 @@ export default function HistoricoPage() {
                               </td>
 
                               <td className="max-w-[180px] px-3 py-3">
-                                <p className="truncate text-[9px] font-semibold text-[#211A4A]">
+                                <p className="truncate text-[9px] font-semibold text-[#12325B]">
                                   {item.arquivoNome}
                                 </p>
                                 <p className="mt-0.5 truncate text-[7px] text-gray-400">
@@ -799,7 +798,7 @@ export default function HistoricoPage() {
                                 <button
                                   type="button"
                                   onClick={() => selecionar(item)}
-                                  className="rounded-lg border border-[#E7E2F2] p-2 text-gray-400 transition hover:bg-[#EEE7FF] hover:text-[#7C3AED]"
+                                  className="rounded-lg border border-[#E8E1F5] p-2 text-gray-400 transition hover:bg-[#E8F3FA] hover:text-[#6D28D9]"
                                   title="Ver detalhes"
                                 >
                                   <Eye size={13} />
@@ -894,7 +893,7 @@ export default function HistoricoPage() {
                   </div>
 
                   {/* PAGINAÇÃO */}
-                  <div className="flex items-center justify-between border-t border-[#E7E2F2] px-4 py-3">
+                  <div className="flex items-center justify-between border-t border-[#E8E1F5] px-4 py-3">
                     <p className="text-[8px] text-gray-400">
                       Mostrando{" "}
                       {filtradas.length === 0
@@ -931,11 +930,11 @@ export default function HistoricoPage() {
 
             {/* DETALHES */}
             {selecionada && (
-              <section className="mt-4 overflow-hidden rounded-2xl border border-violet-100 bg-white shadow-sm shadow-violet-100/50">
-                <div className="flex items-start justify-between gap-4 border-b border-violet-100 bg-gradient-to-r from-violet-50/70 via-white to-fuchsia-50/40 p-4">
+              <section className="mt-4 overflow-hidden rounded-2xl border border-violet-200 bg-white shadow-[0_5px_14px_rgba(124,58,237,0.08)]">
+                <div className="flex items-start justify-between gap-4 border-b border-violet-100 bg-gradient-to-r from-blue-50/70 via-white to-cyan-50/40 p-4">
                   <div className="flex min-w-0 items-start gap-3">
-                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#EEE7FF]">
-                      <FileText size={17} className="text-[#7C3AED]" />
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#E8F3FA]">
+                      <FileText size={17} className="text-[#6D28D9]" />
                     </div>
                     <div className="min-w-0">
                       <h2 className="truncate text-[11px] font-bold">
@@ -968,8 +967,8 @@ export default function HistoricoPage() {
                     </p>
                   </div>
 
-                  <div className="rounded-xl bg-violet-50 p-3 ring-1 ring-violet-100">
-                    <p className="text-[8px] font-semibold text-violet-500">Tipo</p>
+                  <div className="rounded-xl bg-blue-50 p-3 ring-1 ring-blue-100">
+                    <p className="text-[8px] font-semibold text-[#7C3AED]">Tipo</p>
                     <p className="mt-1 text-[9px] font-bold">
                       {selecionada.tipo}
                     </p>
@@ -991,8 +990,8 @@ export default function HistoricoPage() {
                 </div>
 
                 <div className="grid grid-cols-2 gap-3 border-t border-gray-100 bg-slate-50/40 p-4 sm:grid-cols-4">
-                  <div className="rounded-xl bg-violet-50 p-3 ring-1 ring-violet-100">
-                    <p className="text-[8px] font-semibold text-violet-500">Processados</p>
+                  <div className="rounded-xl bg-blue-50 p-3 ring-1 ring-blue-100">
+                    <p className="text-[8px] font-semibold text-[#7C3AED]">Processados</p>
                     <p className="mt-1 text-sm font-bold">
                       {selecionada.processados}
                     </p>
@@ -1021,7 +1020,7 @@ export default function HistoricoPage() {
 
                 <div className="grid gap-3 border-t border-gray-100 p-4 sm:grid-cols-2">
                   <div className="rounded-xl border border-violet-100 bg-violet-50/30 p-3">
-                    <p className="text-[8px] font-bold text-[#7C3AED]">
+                    <p className="text-[8px] font-bold text-[#6D28D9]">
                       Lista temática
                     </p>
                     <p className="mt-1 text-[9px] text-gray-600">
@@ -1029,8 +1028,8 @@ export default function HistoricoPage() {
                     </p>
                   </div>
 
-                  <div className="rounded-xl border border-blue-100 bg-blue-50/30 p-3">
-                    <p className="text-[8px] font-bold text-blue-600">
+                  <div className="rounded-xl border border-violet-100 bg-violet-50/30 p-3">
+                    <p className="text-[8px] font-bold text-[#2563EB]">
                       Grupo de condições
                     </p>
                     <p className="mt-1 text-[9px] text-gray-600">
@@ -1048,9 +1047,9 @@ export default function HistoricoPage() {
                   </div>
                 </div>
 
-                <div className="border-t border-gray-100 bg-[#FAF9FD] p-4">
+                <div className="border-t border-gray-100 bg-[#F8FBFD] p-4">
                   <div className="flex items-center gap-2">
-                    <Clock3 size={13} className="text-[#7C3AED]" />
+                    <Clock3 size={13} className="text-[#6D28D9]" />
                     <p className="text-[8px] text-gray-500">
                       Registro preservado no histórico da importação do PEC.
                     </p>
@@ -1566,7 +1565,7 @@ export default function HistoricoPage() {
       `}</style>
 
       {/* NAVEGAÇÃO INFERIOR — TABLET/CELULAR */}
-      <nav className="fixed inset-x-0 bottom-0 z-50 border-t border-[#E7E2F2] bg-white/95 px-3 pb-[env(safe-area-inset-bottom)] pt-2 shadow-[0_-4px_16px_rgba(33,26,74,0.08)] backdrop-blur lg:hidden print:hidden">
+      <nav className="fixed inset-x-0 bottom-0 z-50 border-t border-[#E8E1F5] bg-white/95 px-3 pb-[env(safe-area-inset-bottom)] pt-2 shadow-[0_-4px_16px_rgba(33,26,74,0.08)] backdrop-blur lg:hidden print:hidden">
         <div className="mx-auto flex max-w-lg items-center justify-around">
           <button
             type="button"
@@ -1588,7 +1587,7 @@ export default function HistoricoPage() {
 
           <button
             type="button"
-            className="flex min-w-[64px] flex-col items-center gap-1 rounded-xl bg-[#EEE7FF] px-3 py-2 text-[#7C3AED]"
+            className="flex min-w-[64px] flex-col items-center gap-1 rounded-xl bg-[#E8F3FA] px-3 py-2 text-[#6D28D9]"
           >
             <History size={17} />
             <span className="text-[9px] font-semibold">Histórico</span>

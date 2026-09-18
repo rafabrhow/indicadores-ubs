@@ -7,6 +7,7 @@ import {
   ClipboardList,
   Loader2,
   MapPin,
+  MessageCircle,
   Phone,
   Save,
   ShieldCheck,
@@ -173,10 +174,10 @@ export default function PacienteOperacionalPage() {
 
   if (carregando || carregandoDados) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-[#F8F7FF]">
+      <main className="flex min-h-screen items-center justify-center bg-[#F7FAFC]">
         <div className="text-center">
-          <Loader2 size={34} className="mx-auto mb-3 animate-spin text-[#7C3AED]" />
-          <p className="text-sm font-semibold text-[#4C1D95]">
+          <Loader2 size={34} className="mx-auto mb-3 animate-spin text-[#00A9E8]" />
+          <p className="text-sm font-semibold text-[#003B8E]">
             Carregando ficha...
           </p>
         </div>
@@ -186,17 +187,17 @@ export default function PacienteOperacionalPage() {
 
   if (erro && !dados) {
     return (
-      <main className="min-h-screen bg-[#F8F7FF] px-5 py-8">
+      <main className="min-h-screen bg-[#F7FAFC] px-5 py-8">
         <div className="mx-auto max-w-3xl rounded-3xl border border-red-100 bg-white p-7 shadow-sm">
           <AlertCircle size={28} className="text-red-500" />
-          <h1 className="mt-4 text-xl font-bold text-[#211A4A]">
+          <h1 className="mt-4 text-xl font-bold text-[#003B8E]">
             Não foi possível abrir o paciente
           </h1>
           <p className="mt-2 text-sm text-gray-500">{erro}</p>
           <button
             type="button"
             onClick={() => router.back()}
-            className="mt-6 flex items-center gap-2 rounded-xl bg-[#7C3AED] px-5 py-3 text-sm font-semibold text-white"
+            className="mt-6 flex items-center gap-2 rounded-xl bg-[#00A9E8] px-5 py-3 text-sm font-semibold text-white"
           >
             <ArrowLeft size={16} />
             Voltar
@@ -209,31 +210,37 @@ export default function PacienteOperacionalPage() {
   if (!dados) return null;
 
   return (
-    <main className="min-h-screen bg-[#F8F7FF] text-[#211A4A]">
-      <header className="rounded-b-[28px] bg-gradient-to-r from-[#7C3AED] to-[#5B21B6] px-6 py-6 text-white">
-        <div className="mx-auto max-w-4xl">
+    <main className="min-h-screen bg-[#F7FAFC] text-[#003B8E]">
+      <header
+        className="relative isolate overflow-hidden rounded-b-[28px] border border-emerald-200/60 bg-gradient-to-br from-[#009C3B]/95 via-[#00A9E8]/85 to-[#F2C300]/85 px-5 py-5 text-white shadow-[0_10px_24px_rgba(0,156,59,0.16),0_4px_10px_rgba(0,59,142,0.10)] backdrop-blur-md"
+      >
+        <div className="pointer-events-none absolute -left-10 -top-14 h-28 w-28 rounded-full bg-white/15 blur-2xl" />
+        <div className="pointer-events-none absolute right-10 -top-12 h-32 w-32 rounded-full bg-[#F2C300]/20 blur-3xl" />
+        <div className="pointer-events-none absolute bottom-[-45px] left-1/2 h-24 w-48 -translate-x-1/2 rounded-full bg-white/10 blur-3xl" />
+
+        <div className="relative mx-auto max-w-4xl">
           <button
             type="button"
             onClick={() => router.back()}
-            className="mb-5 flex items-center gap-2 text-[11px] font-semibold text-white/80"
+            className="group mb-5 flex items-center gap-2 text-[11px] font-bold text-white/95"
           >
-            <ArrowLeft size={15} />
+            <ArrowLeft size={15} className="transition-transform group-hover:-translate-x-0.5" />
             Voltar para microárea
           </button>
 
           <div className="flex items-center justify-between gap-4">
             <div className="flex min-w-0 items-center gap-3">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white/15">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white/15 shadow-sm ring-1 ring-white/25">
                 <UserRound size={23} />
               </div>
               <div className="min-w-0">
-                <p className="text-[9px] font-semibold uppercase tracking-wide text-white/70">
+                <p className="text-[9px] font-semibold uppercase tracking-wide text-white/85">
                   Acompanhamento operacional
                 </p>
-                <h1 className="mt-1 truncate text-2xl font-bold">
+                <h1 className="mt-1 truncate text-2xl font-extrabold">
                   {dados.paciente.nome}
                 </h1>
-                <p className="mt-1 text-xs text-white/80">
+                <p className="mt-1 text-xs text-white/90">
                   {dados.paciente.idade !== null && dados.paciente.idade !== ""
                     ? `${dados.paciente.idade} anos`
                     : "Idade não informada"}{" "}
@@ -244,35 +251,39 @@ export default function PacienteOperacionalPage() {
 
             {(dados.paciente.telefoneCelular || dados.paciente.telefoneContato) && (
               <a
-                href={`tel:${dados.paciente.telefoneCelular || dados.paciente.telefoneContato}`}
-                className="hidden shrink-0 items-center gap-2 rounded-xl bg-white/15 px-4 py-2 text-[10px] font-semibold text-white sm:flex"
+                href={`https://wa.me/55${(
+                  dados.paciente.telefoneCelular || dados.paciente.telefoneContato
+                ).replace(/\D/g, "")}`}
+                target="_blank"
+                rel="noreferrer"
+                className="flex shrink-0 items-center gap-2 rounded-xl bg-[#22C55E] px-4 py-2 text-[10px] font-bold text-white shadow-[0_6px_14px_rgba(34,197,94,0.22)] transition-all hover:-translate-y-0.5 hover:bg-[#16A34A] hover:shadow-[0_9px_18px_rgba(34,197,94,0.28)]"
               >
-                <Phone size={14} />
-                Ligar
+                <MessageCircle size={14} />
+                WhatsApp
               </a>
             )}
           </div>
         </div>
       </header>
 
-      <div className="mx-auto max-w-6xl px-5 py-6">
+      <div className="mx-auto max-w-6xl px-4 pb-6 pt-5 sm:px-5 md:pt-6">
         {erro && (
-          <div className="mb-4 rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-xs text-red-600">
+          <div className="mb-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-xs text-red-600 shadow-sm">
             {erro}
           </div>
         )}
 
         {sucesso && (
-          <div className="mb-4 rounded-xl border border-green-100 bg-green-50 px-4 py-3 text-xs text-green-700">
+          <div className="mb-4 rounded-xl border border-green-100 bg-green-50 px-4 py-3 text-xs text-[#006B35]">
             {sucesso}
           </div>
         )}
 
         <div className="grid gap-4 lg:grid-cols-[minmax(260px,0.85fr)_minmax(0,1.5fr)]">
           <div>
-<section className="rounded-2xl border border-[#E7E2F2] bg-white p-5 shadow-sm">
+<section className="rounded-2xl border border-[#B8DFF0] bg-gradient-to-br from-white via-[#F8FCFF] to-[#EFF9FD] p-5 shadow-[0_7px_16px_rgba(0,59,142,0.07),0_2px_5px_rgba(0,169,232,0.05)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_11px_22px_rgba(0,169,232,0.11)]">
           <div className="flex items-center gap-2">
-            <ClipboardList size={17} className="text-[#7C3AED]" />
+            <ClipboardList size={17} className="text-[#00A9E8]" />
             <h2 className="text-sm font-bold">Dados básicos</h2>
           </div>
 
@@ -297,9 +308,9 @@ export default function PacienteOperacionalPage() {
             />
           </div>
         </section>
-<section className="mt-4 rounded-2xl border border-[#E7E2F2] bg-white p-5 shadow-sm">
+<section className="mt-4 rounded-2xl border border-[#B8DFF0] bg-gradient-to-br from-white via-[#F8FCFF] to-[#EFF9FD] p-5 shadow-[0_7px_16px_rgba(0,59,142,0.07),0_2px_5px_rgba(0,169,232,0.05)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_11px_22px_rgba(0,169,232,0.11)]">
           <div className="flex items-center gap-2">
-            <MapPin size={17} className="text-[#7C3AED]" />
+            <MapPin size={17} className="text-[#00A9E8]" />
             <h2 className="text-sm font-bold">Território</h2>
           </div>
 
@@ -325,7 +336,7 @@ export default function PacienteOperacionalPage() {
           </div>
 
           <div>
-<section className="mt-4 rounded-2xl border border-[#E7E2F2] bg-white p-5 shadow-sm">
+<section className="mt-4 rounded-2xl border border-[#B8DFF0] bg-gradient-to-br from-white via-[#F8FCFF] to-[#EFF9FD] p-5 shadow-[0_7px_16px_rgba(0,59,142,0.07),0_2px_5px_rgba(0,169,232,0.05)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_11px_22px_rgba(0,169,232,0.11)]">
           <div className="flex items-center justify-between gap-3">
             <div>
               <h2 className="text-sm font-bold">Acompanhamentos identificados</h2>
@@ -337,7 +348,7 @@ export default function PacienteOperacionalPage() {
             <button
               type="button"
               onClick={() => setModalVisita(true)}
-              className="flex items-center gap-2 rounded-xl bg-[#7C3AED] px-4 py-2.5 text-[10px] font-semibold text-white"
+              className="flex items-center gap-2 rounded-xl bg-[#00A9E8] px-4 py-2.5 text-[10px] font-bold text-white shadow-[0_5px_12px_rgba(0,169,232,0.20)] transition-all hover:-translate-y-0.5 hover:bg-[#008FC5] hover:shadow-[0_8px_16px_rgba(0,169,232,0.24)]"
             >
               <MapPin size={14} />
               Registrar visita
@@ -363,34 +374,34 @@ export default function PacienteOperacionalPage() {
                     key={item.indicador}
                     className={`rounded-xl border p-3 ${
                       temRevisao
-                        ? "border-amber-200 bg-amber-50/50"
-                        : "border-green-100 bg-green-50/60"
+                        ? "border-[#F5D66A] bg-gradient-to-br from-[#FFF9E5] to-white shadow-[0_4px_10px_rgba(242,195,0,0.07)]"
+                        : "border-[#A7E6C0] bg-gradient-to-br from-[#ECFDF3] to-white shadow-[0_4px_10px_rgba(0,156,59,0.07)]"
                     }`}
                   >
                     <div className="flex items-start gap-2">
                       {temRevisao ? (
                         <AlertCircle
                           size={15}
-                          className="mt-0.5 shrink-0 text-amber-600"
+                          className="mt-0.5 shrink-0 text-[#C78A00]"
                         />
                       ) : (
                         <Check
                           size={15}
-                          className="mt-0.5 shrink-0 text-green-600"
+                          className="mt-0.5 shrink-0 text-[#009C3B]"
                         />
                       )}
 
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center justify-between gap-2">
                           <p className="text-[10px] font-bold">{item.nome}</p>
-                          <span className="text-[8px] font-bold text-[#7C3AED]">
+                          <span className="text-[8px] font-bold text-[#00A9E8]">
                             {item.indicador}
                           </span>
                         </div>
 
                         <p
                           className={`mt-1 text-[8px] ${
-                            temRevisao ? "text-amber-700" : "text-green-700"
+                            temRevisao ? "text-[#8A6500]" : "text-[#006B35]"
                           }`}
                         >
                           {temRevisao
@@ -403,7 +414,7 @@ export default function PacienteOperacionalPage() {
                             {acoes.map((acao) => (
                               <div
                                 key={`${item.indicador}-${acao.nome}`}
-                                className="flex items-start justify-between gap-2 rounded-lg bg-white/70 px-2 py-1.5"
+                                className="flex items-start justify-between gap-2 rounded-lg border border-[#E5EAF0] bg-white/80 px-2 py-1.5 shadow-sm"
                               >
                                 <div className="min-w-0">
                                   <p className="text-[8px] font-semibold text-gray-700">
@@ -417,8 +428,8 @@ export default function PacienteOperacionalPage() {
                                 <span
                                   className={`shrink-0 rounded-full px-1.5 py-0.5 text-[7px] font-bold ${
                                     acao.status === "Registrado"
-                                      ? "bg-green-100 text-green-700"
-                                      : "bg-amber-100 text-amber-700"
+                                      ? "bg-green-100 text-[#006B35]"
+                                      : "bg-amber-100 text-[#8A6500]"
                                   }`}
                                 >
                                   {acao.status}
@@ -435,7 +446,7 @@ export default function PacienteOperacionalPage() {
             </div>
           )}
         </section>
-<section className="mt-4 rounded-2xl border border-[#E7E2F2] bg-white p-5 shadow-sm">
+<section className="mt-4 rounded-2xl border border-[#B8DFF0] bg-gradient-to-br from-white via-[#F8FCFF] to-[#EFF9FD] p-5 shadow-[0_7px_16px_rgba(0,59,142,0.07),0_2px_5px_rgba(0,169,232,0.05)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_11px_22px_rgba(0,169,232,0.11)]">
           <h2 className="text-sm font-bold">Histórico de acompanhamentos</h2>
 
           {(dados.paciente.acompanhamentos ?? []).length === 0 ? (
@@ -447,7 +458,7 @@ export default function PacienteOperacionalPage() {
           ) : (
             <div className="mt-4 space-y-2">
               {(dados.paciente.acompanhamentos ?? []).map((item) => (
-                <div key={item.id} className="rounded-xl border border-[#E7E2F2] bg-[#FAF9FD] p-3">
+                <div key={item.id} className="rounded-xl border border-[#DDEAF2] bg-gradient-to-br from-white to-[#F7FBFD] p-3 shadow-[0_4px_10px_rgba(0,59,142,0.05)] transition-all hover:-translate-y-0.5 hover:shadow-[0_8px_16px_rgba(0,169,232,0.09)]">
                   <div className="flex items-center justify-between gap-3">
                     <p className="text-[10px] font-bold">{item.tipo}</p>
                     <span className="text-[8px] text-gray-400">{item.data || "Data não informada"}</span>
@@ -463,8 +474,8 @@ export default function PacienteOperacionalPage() {
           </div>
         </div>
 
-<div className="mt-4 flex items-center gap-3 rounded-2xl bg-[#F3F0FA] px-4 py-3">
-          <ShieldCheck size={18} className="shrink-0 text-[#7C3AED]" />
+<div className="mt-4 flex items-center gap-3 rounded-2xl border border-[#C9E8F5] bg-gradient-to-r from-[#EFF9FD] to-[#F6FBFE] px-4 py-3 shadow-[0_4px_10px_rgba(0,169,232,0.06)]">
+          <ShieldCheck size={18} className="shrink-0 text-[#00A9E8]" />
           <p className="text-[9px] leading-relaxed text-gray-500">
             Esta ficha é operacional. O ACS acessa somente pacientes da sua microárea.
           </p>
@@ -472,10 +483,10 @@ export default function PacienteOperacionalPage() {
 
       {modalVisita && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl">
+          <div className="w-full max-w-md rounded-3xl border border-[#DDEAF2] bg-white p-6 shadow-[0_18px_40px_rgba(0,59,142,0.18)]">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="text-[9px] font-semibold uppercase tracking-wide text-[#7C3AED]">
+                <p className="text-[9px] font-semibold uppercase tracking-wide text-[#00A9E8]">
                   Nova visita
                 </p>
                 <h2 className="mt-1 text-lg font-bold">Registrar visita domiciliar</h2>
@@ -501,10 +512,10 @@ export default function PacienteOperacionalPage() {
               placeholder="Registre de forma objetiva o que foi observado ou orientado..."
               rows={6}
               disabled={salvando}
-              className="mt-2 w-full resize-none rounded-2xl border border-gray-200 bg-[#FAF9FD] p-4 text-sm outline-none focus:border-[#7C3AED]"
+              className="mt-2 w-full resize-none rounded-2xl border border-gray-200 bg-[#FAF9FD] p-4 text-sm outline-none focus:border-[#00A9E8] focus:ring-2 focus:ring-[#00A9E8]/10"
             />
 
-            <div className="mt-4 rounded-xl bg-blue-50 p-3 text-[9px] leading-relaxed text-blue-700">
+            <div className="mt-4 rounded-xl border border-[#C9E8F5] bg-[#EFF9FD] p-3 text-[9px] leading-relaxed text-[#16607A]">
               Registre somente informações necessárias para a atividade operacional do ACS.
             </div>
 
@@ -522,7 +533,7 @@ export default function PacienteOperacionalPage() {
                 type="button"
                 onClick={registrarVisita}
                 disabled={salvando || !observacao.trim()}
-                className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-[#7C3AED] px-4 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
+                className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-[#00A9E8] px-4 py-3 text-sm font-bold text-white shadow-[0_5px_12px_rgba(0,169,232,0.20)] transition-all hover:-translate-y-0.5 hover:bg-[#008FC5] disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {salvando ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
                 {salvando ? "Salvando..." : "Salvar visita"}
@@ -545,9 +556,9 @@ function Info({
   icon?: React.ReactNode;
 }) {
   return (
-    <div className="rounded-xl bg-[#FAF9FD] p-3">
+    <div className="rounded-xl border border-[#E5EDF3] bg-gradient-to-br from-[#F8FCFF] to-white p-3 shadow-sm">
       <p className="text-[8px] font-semibold uppercase tracking-wide text-gray-400">{label}</p>
-      <p className="mt-1 flex items-center gap-1 text-xs font-semibold text-[#211A4A]">
+      <p className="mt-1 flex items-center gap-1 text-xs font-semibold text-[#003B8E]">
         {icon}
         {value}
       </p>

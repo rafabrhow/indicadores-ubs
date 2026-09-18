@@ -214,8 +214,8 @@ export default function PacientesPage() {
 
   if (carregando || !usuario) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-[#F8F7FF]">
-        <Loader2 size={34} className="animate-spin text-[#7C3AED]" />
+      <main className="flex min-h-screen items-center justify-center bg-[#F7FAFC]">
+        <Loader2 size={34} className="animate-spin text-[#003B8E]" />
       </main>
     );
   }
@@ -226,39 +226,48 @@ export default function PacientesPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#F8F7FF] text-[#211A4A]">
+    <main className="min-h-screen bg-[#F7FAFC] text-[#003B8E]">
       <div className="flex min-h-screen">
-        <aside className="hidden w-[150px] shrink-0 flex-col border-r border-[#E7E2F2] bg-white lg:flex">
+        <aside className="hidden w-[150px] shrink-0 flex-col border-r border-[#DDEAF2] bg-white lg:flex">
           <div className="border-b border-[#E7E2F2] px-4 py-5">
             <div className="flex items-center gap-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#7C3AED]">
-                <ShieldCheck size={17} className="text-white" />
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#00A9E8]">
+                 <img
+                src="/brasil360-logo-header.png"
+                alt="Brasil 360"
+                className="h-14 w-[88px] object-contain"
+              />
               </div>
-              <span className="text-[11px] font-bold text-[#4C1D95]">
-                Indicadores
-              </span>
+               <div className="min-w-0">
+                <p className="text-[11px] font-black tracking-tight text-[#003B8E]">
+                  BR<span className="text-[#00A9E8]">3</span><span className="text-[#009C3B]">6</span><span className="text-[#F2C300]">0</span>
+                </p>
+                <p className="text-[7px] font-semibold uppercase tracking-wide text-[#003B8E]">
+                  Indicadores
+                </p>
+              </div>
             </div>
-            <p className="mt-4 text-[8px] font-bold uppercase tracking-wide text-[#7C3AED]">
+            <p className="mt-4 text-[8px] font-bold uppercase tracking-wide text-[#003B8E]">
               Enfermeira Gestora
             </p>
           </div>
 
           <nav className="flex-1 px-3 py-4">
-            <button onClick={() => router.push("/dashboard")} className="mb-2 flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left text-[10px] text-gray-500 transition-colors hover:bg-[#F8F7FF] hover:text-[#7C3AED]">
+            <button onClick={() => router.push("/dashboard")} className="mb-2 flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left text-[10px] text-gray-500 transition-colors hover:bg-[#F7FAFC] hover:text-[#003B8E]">
               <House size={15} /> Início
             </button>
-            <button className="mb-2 flex w-full items-center gap-3 rounded-lg bg-[#EEE7FF] px-3 py-3 text-left text-[10px] font-semibold text-[#7C3AED]">
+            <button className="mb-2 flex w-full items-center gap-3 rounded-lg bg-[#E5F5FB] px-3 py-3 text-left text-[10px] font-semibold text-[#003B8E]">
               <UserRound size={15} /> Pacientes
             </button>
-            <button onClick={() => router.push("/equipe")} className="mb-2 flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left text-[10px] text-gray-500 transition-colors hover:bg-[#F8F7FF] hover:text-[#7C3AED]">
+            <button onClick={() => router.push("/equipe")} className="mb-2 flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left text-[10px] text-gray-500 transition-colors hover:bg-[#F7FAFC] hover:text-[#003B8E]">
               <UsersRound size={15} /> Equipe
             </button>
-            <button onClick={() => router.push("/config")} className="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left text-[10px] text-gray-500 transition-colors hover:bg-[#F8F7FF] hover:text-[#7C3AED]">
+            <button onClick={() => router.push("/config")} className="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left text-[10px] text-gray-500 transition-colors hover:bg-[#F7FAFC] hover:text-[#003B8E]">
               <FileBarChart size={15} /> Config
             </button>
           </nav>
 
-          <div className="border-t border-[#E7E2F2] p-3">
+          <div className="border-t border-[#DDEAF2] p-3">
             <p className="truncate text-[9px] font-semibold">{usuario.nome}</p>
             <p className="truncate text-[8px] text-gray-400">Enfermeira</p>
             <button onClick={sair} className="mt-3 flex w-full items-center justify-center gap-2 rounded-lg border border-gray-200 px-2 py-2 text-[9px] font-semibold text-gray-500 transition-colors hover:border-red-200 hover:bg-red-50 hover:text-red-500">
@@ -268,37 +277,65 @@ export default function PacientesPage() {
         </aside>
 
         <section className="min-w-0 flex-1 pb-24 lg:pb-0">
-          <header className="rounded-b-[24px] bg-gradient-to-r from-[#7C3AED] to-[#5B21B6] px-8 py-6 text-white">
-            <button
-              onClick={() => router.push("/dashboard")}
-              className="mb-2 text-[10px] text-white/75"
-            >
-              ← Voltar
-            </button>
-            <p className="text-[11px] font-medium text-white/75">
-              Enfermeira Gestora
-            </p>
-            <h1 className="mt-1 text-2xl font-bold">Pacientes da Equipe</h1>
-            <p className="mt-1 text-[10px] text-white/80">
-              {pacientes.length} pacientes • {ubs?.nome || "UBS"}
-            </p>
+          <header className="relative isolate overflow-hidden rounded-b-[28px] border border-emerald-200/60 bg-gradient-to-br from-[#009C3B]/95 via-[#00A9E8]/85 to-[#F2C300]/85 px-5 py-5 text-white shadow-[0_10px_24px_rgba(0,156,59,0.16),0_4px_10px_rgba(0,59,142,0.10)] backdrop-blur-md">
+            <div className="pointer-events-none absolute -left-10 -top-14 h-28 w-28 rounded-full bg-white/15 blur-2xl" />
+            <div className="pointer-events-none absolute right-24 -top-12 h-32 w-32 rounded-full bg-[#F2C300]/20 blur-3xl" />
+
+            <div className="relative pr-24">
+              <button
+                onClick={() => router.push("/dashboard")}
+                className="group flex items-center gap-2 text-xs font-bold text-white/95"
+              >
+                <ChevronRight size={14} className="rotate-180 transition-transform group-hover:-translate-x-1" />
+                Voltar
+              </button>
+
+              <div className="mt-4">
+                <p className="text-[9px] font-semibold uppercase tracking-wider text-white/85">
+                  Gestão da UBS • Enfermeira Gestora
+                </p>
+                <h1 className="mt-1 text-lg font-extrabold">Pacientes da Equipe</h1>
+                <p className="mt-1 text-[10px] text-white/90">
+                  {pacientes.length} pacientes • {ubs?.nome || "UBS"}
+                </p>
+              </div>
+            </div>
+
+            <img
+              src="/brasil360-logo-header.png"
+              alt="Brasil 360"
+              width={88}
+              height={88}
+              className="absolute right-5 top-1/2 h-16 w-16 -translate-y-1/2 rounded-2xl object-cover shadow-[0_8px_18px_rgba(0,59,142,0.22)] ring-1 ring-white/50 sm:h-20 sm:w-20"
+            />
           </header>
 
-          <div className="px-7 py-6">
-            <div className="grid grid-cols-3 gap-3">
-              <div className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-[#E7E2F2]">
-                <p className="text-[9px] text-gray-500">Pacientes</p>
-                <p className="mt-1 text-2xl font-bold">{pacientes.length}</p>
+          <div className="px-4 pb-6 pt-5 sm:px-6 md:pt-6 lg:px-7">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+              <div className="rounded-2xl border border-[#9EDFF2] bg-gradient-to-br from-[#EAF7FC] via-white to-[#D7F1FA] p-4 shadow-[0_6px_14px_rgba(0,169,232,0.12),0_2px_5px_rgba(0,0,0,0.05)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_10px_20px_rgba(0,169,232,0.18)]">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#DDF4FC] shadow-sm ring-1 ring-[#9EDFF2]">
+                  <UserRound size={15} className="text-[#00A9E8]" />
+                </div>
+                <p className="mt-3 text-[9px] font-medium text-[#39708A]">Pacientes</p>
+                <p className="mt-1 text-2xl font-extrabold text-[#003B8E]">{pacientes.length}</p>
               </div>
-              <div className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-[#E7E2F2]">
-                <p className="text-[9px] text-gray-500">Sem registro</p>
-                <p className="mt-1 text-2xl font-bold text-[#F59E0B]">
+
+              <div className="rounded-2xl border border-[#F5D66A] bg-gradient-to-br from-[#FFF9E5] via-white to-[#FFF1B8] p-4 shadow-[0_6px_14px_rgba(242,195,0,0.12),0_2px_5px_rgba(0,0,0,0.05)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_10px_20px_rgba(242,195,0,0.18)]">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#FFF1B8] shadow-sm ring-1 ring-[#F5D66A]">
+                  <ShieldCheck size={15} className="text-[#C78A00]" />
+                </div>
+                <p className="mt-3 text-[9px] font-medium text-[#8A6500]">Sem registro</p>
+                <p className="mt-1 text-2xl font-extrabold text-[#003B8E]">
                   {pacientes.filter((p) => p.tematicasPEC.length === 0).length}
                 </p>
               </div>
-              <div className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-[#E7E2F2]">
-                <p className="text-[9px] text-gray-500">Com dados PEC</p>
-                <p className="mt-1 text-2xl font-bold text-[#10B981]">
+
+              <div className="rounded-2xl border border-[#A7E6C0] bg-gradient-to-br from-[#ECFDF3] via-white to-[#DDF7E7] p-4 shadow-[0_6px_14px_rgba(0,156,59,0.12),0_2px_5px_rgba(0,0,0,0.05)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_10px_20px_rgba(0,156,59,0.18)]">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#D9F6E5] shadow-sm ring-1 ring-[#A7E6C0]">
+                  <FileBarChart size={15} className="text-[#009C3B]" />
+                </div>
+                <p className="mt-3 text-[9px] font-medium text-[#39705A]">Com dados PEC</p>
+                <p className="mt-1 text-2xl font-extrabold text-[#003B8E]">
                   {pacientes.filter((p) => {
                     const idade = idadeEmAnos(p.idade);
                     const c2Elegivel = idade !== null && idade <= 2;
@@ -311,14 +348,14 @@ export default function PacientesPage() {
               </div>
             </div>
 
-            <div className="mt-4 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-[#E7E2F2]">
+            <div className="mt-4 rounded-2xl border border-[#DDEAF2] bg-white p-4 shadow-[0_5px_14px_rgba(0,59,142,0.07)] transition-all duration-200 hover:shadow-[0_8px_18px_rgba(0,59,142,0.10)]">
               <div className="relative">
-                <Search size={17} className="absolute left-4 top-1/2 -translate-y-1/2 text-[#7C3AED]" />
+                <Search size={17} className="absolute left-4 top-1/2 -translate-y-1/2 text-[#003B8E]" />
                 <input
                   value={busca}
                   onChange={(e) => setBusca(e.target.value)}
                   placeholder="Buscar por nome, CPF ou CNS..."
-                  className="h-12 w-full rounded-xl border border-gray-200 bg-gray-50 pl-11 pr-4 text-sm outline-none focus:border-[#7C3AED] focus:bg-white"
+                  className="h-12 w-full rounded-xl border border-gray-200 bg-gray-50 pl-11 pr-4 text-sm outline-none focus:border-[#00A9E8] focus:bg-white"
                 />
               </div>
 
@@ -335,21 +372,21 @@ export default function PacientesPage() {
               </div>
             </div>
 
-            {erro && <div className="mt-4 rounded-xl bg-red-50 p-3 text-xs text-red-700">{erro}</div>}
+            {erro && <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 p-4 text-xs text-red-700 shadow-sm">{erro}</div>}
 
             <div className="mt-5 space-y-3">
               {carregandoPacientes ? (
-                <div className="rounded-2xl bg-white p-10 text-center">
-                  <Loader2 size={28} className="mx-auto animate-spin text-[#7C3AED]" />
+                <div className="rounded-2xl border border-[#DDEAF2] bg-white p-10 text-center shadow-[0_5px_14px_rgba(0,59,142,0.07)]">
+                  <Loader2 size={28} className="mx-auto animate-spin text-[#003B8E]" />
                 </div>
               ) : filtrados.map((p) => (
                 <button
                   key={p.id}
                   onClick={() => router.push(`/pacientes/${encodeURIComponent(p.id)}`)}
-                  className="w-full rounded-2xl bg-white p-4 text-left shadow-sm ring-1 ring-[#E7E2F2] hover:ring-[#C4B5FD]"
+                  className="w-full rounded-2xl border border-[#DDEAF2] bg-white p-4 text-left shadow-[0_5px_14px_rgba(0,59,142,0.07)] transition-all duration-200 hover:-translate-y-0.5 hover:border-[#9EDFF2] hover:shadow-[0_10px_20px_rgba(0,169,232,0.14)]"
                 >
                   <div className="flex items-center gap-3">
-                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#EEE7FF] text-xs font-bold text-[#7C3AED]">
+                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#E5F5FB] text-xs font-bold text-[#003B8E]">
                       {iniciais(p.nome)}
                     </div>
 
@@ -398,8 +435,8 @@ export default function PacientesPage() {
               ))}
 
               {!carregandoPacientes && filtrados.length === 0 && (
-                <div className="rounded-2xl border border-dashed border-[#D8C9FF] bg-white p-10 text-center">
-                  <p className="text-sm font-bold text-[#4C1D95]">Nenhum paciente encontrado</p>
+                <div className="rounded-2xl border border-dashed border-[#9EDFF2] bg-gradient-to-br from-[#F4FBFE] to-white p-10 text-center shadow-[0_5px_14px_rgba(0,59,142,0.06)]">
+                  <p className="text-sm font-bold text-[#003B8E]">Nenhum paciente encontrado</p>
                   <p className="mt-1 text-xs text-gray-500">Tente alterar a busca ou os filtros.</p>
                 </div>
               )}
@@ -409,18 +446,18 @@ export default function PacientesPage() {
       </div>
 
       {/* Menu inferior para tablet e telas menores. */}
-      <nav className="fixed inset-x-0 bottom-0 z-50 border-t border-[#E7E2F2] bg-white/95 px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 shadow-[0_-4px_18px_rgba(76,29,149,0.08)] backdrop-blur lg:hidden">
+      <nav className="fixed inset-x-0 bottom-0 z-50 border-t border-[#DDEAF2] bg-white/95 px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 shadow-[0_-4px_18px_rgba(0,59,142,0.08)] backdrop-blur lg:hidden">
         <div className="mx-auto grid max-w-xl grid-cols-5 gap-1">
           <button
             onClick={() => router.push("/dashboard")}
-            className="flex min-h-14 flex-col items-center justify-center gap-1 rounded-xl text-[9px] font-medium text-gray-500 transition-colors hover:bg-[#F8F7FF] hover:text-[#7C3AED]"
+            className="flex min-h-14 flex-col items-center justify-center gap-1 rounded-xl text-[9px] font-medium text-gray-500 transition-colors hover:bg-[#F7FAFC] hover:text-[#003B8E]"
           >
             <House size={18} />
             <span>Início</span>
           </button>
 
           <button
-            className="flex min-h-14 flex-col items-center justify-center gap-1 rounded-xl bg-[#EEE7FF] text-[9px] font-semibold text-[#7C3AED]"
+            className="flex min-h-14 flex-col items-center justify-center gap-1 rounded-xl bg-[#E5F5FB] text-[9px] font-semibold text-[#003B8E]"
           >
             <UserRound size={18} />
             <span>Pacientes</span>
@@ -428,7 +465,7 @@ export default function PacientesPage() {
 
           <button
             onClick={() => router.push("/equipe")}
-            className="flex min-h-14 flex-col items-center justify-center gap-1 rounded-xl text-[9px] font-medium text-gray-500 transition-colors hover:bg-[#F8F7FF] hover:text-[#7C3AED]"
+            className="flex min-h-14 flex-col items-center justify-center gap-1 rounded-xl text-[9px] font-medium text-gray-500 transition-colors hover:bg-[#F7FAFC] hover:text-[#003B8E]"
           >
             <UsersRound size={18} />
             <span>Equipe</span>
@@ -436,7 +473,7 @@ export default function PacientesPage() {
 
           <button
             onClick={() => router.push("/config")}
-            className="flex min-h-14 flex-col items-center justify-center gap-1 rounded-xl text-[9px] font-medium text-gray-500 transition-colors hover:bg-[#F8F7FF] hover:text-[#7C3AED]"
+            className="flex min-h-14 flex-col items-center justify-center gap-1 rounded-xl text-[9px] font-medium text-gray-500 transition-colors hover:bg-[#F7FAFC] hover:text-[#003B8E]"
           >
             <FileBarChart size={18} />
             <span>Config</span>

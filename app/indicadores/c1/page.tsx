@@ -135,7 +135,7 @@ export default function C1MaisAcessoPage() {
 
   if (carregando || !usuario) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-[#F8F7FF]">
+      <main className="flex min-h-screen items-center justify-center bg-[#F7FAFC]">
         <div className="text-center">
           <div className="mx-auto h-9 w-9 animate-spin rounded-full border-4 border-[#7C3AED]/20 border-t-[#7C3AED]" />
           <p className="mt-3 text-sm font-semibold text-[#4C1D95]">
@@ -164,58 +164,67 @@ export default function C1MaisAcessoPage() {
   );
 
   return (
-    <main className="min-h-screen bg-[#F8F7FF] text-[#211A4A]">
-      <div className="mx-auto min-h-screen max-w-5xl px-4 py-5 sm:px-6 lg:px-8">
-        <header className="flex items-center justify-between gap-4">
+    <main className="min-h-screen bg-[#F7FAFC] text-[#003B8E]">
+      <header className="relative isolate overflow-hidden rounded-b-[28px] border border-emerald-200/60 bg-gradient-to-br from-[#009C3B]/95 via-[#00A9E8]/85 to-[#F2C300]/85 px-5 py-5 text-white shadow-[0_10px_24px_rgba(0,156,59,0.16),0_4px_10px_rgba(0,59,142,0.10)] backdrop-blur-md">
+        <div className="pointer-events-none absolute -left-10 -top-14 h-28 w-28 rounded-full bg-white/15 blur-2xl" />
+        <div className="pointer-events-none absolute right-20 -top-12 h-32 w-32 rounded-full bg-[#F2C300]/20 blur-3xl" />
+
+        <div className="relative pr-24">
           <button
             type="button"
             onClick={() => router.push("/dashboard")}
-            className="group flex items-center gap-2 rounded-xl px-2 py-2 text-[11px] font-semibold text-gray-500 transition hover:bg-white hover:text-[#7C3AED]"
+            className="group flex items-center gap-2 text-xs font-bold text-white/95"
           >
-            <ArrowLeft
-              size={16}
-              className="transition-transform group-hover:-translate-x-1"
-            />
+            <ArrowLeft size={14} className="transition-transform group-hover:-translate-x-1" />
             Voltar
           </button>
 
-          <div className="flex items-center gap-2 text-[10px] font-semibold text-[#7C3AED]">
-            <CalendarDays size={14} />
-            {formatarCompetencia(resultado?.competencia)}
+          <div className="mt-4">
+            <p className="text-[9px] font-semibold uppercase tracking-wider text-white/85">
+              Indicadores APS Brasil 360
+            </p>
+            <h1 className="mt-1 text-lg font-extrabold">C1 — Mais acesso</h1>
+            <p className="mt-1 max-w-2xl text-[10px] leading-relaxed text-white/90">
+              Acompanhamento da proporção de atendimentos de demanda programada em relação ao total de atendimentos de demanda programada e espontânea.
+            </p>
           </div>
-        </header>
+        </div>
 
-        <section className="mt-5 rounded-3xl border border-[#E5E0EC] bg-white p-5 shadow-sm sm:p-7">
+        <img
+          src="/brasil360-logo-header.png"
+          alt="Brasil 360"
+          width={88}
+          height={88}
+          className="absolute right-5 top-1/2 h-16 w-16 -translate-y-1/2 rounded-2xl object-cover shadow-[0_8px_18px_rgba(0,59,142,0.22)] ring-1 ring-white/50 sm:h-20 sm:w-20"
+        />
+      </header>
+
+      <div className="mx-auto min-h-screen max-w-5xl px-4 pb-6 pt-5 sm:px-6 md:pt-6 lg:px-8">
+
+        <section className="rounded-3xl border border-[#9EDFF2] bg-gradient-to-br from-[#EAF7FC] via-white to-[#D7F1FA] p-5 shadow-[0_8px_18px_rgba(0,169,232,0.12),0_3px_7px_rgba(0,0,0,0.05)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_12px_24px_rgba(0,169,232,0.16)] sm:p-7">
           <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
             <div>
               <div className="flex items-center gap-3">
-                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#EEE7FF]">
-                  <CalendarDays size={22} className="text-[#7C3AED]" />
+                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-white/80 shadow-sm ring-1 ring-[#9EDFF2]">
+                  <CalendarDays size={22} className="text-[#00A9E8]" />
                 </div>
-
                 <div>
-                  <p className="text-[10px] font-bold uppercase tracking-wide text-[#7C3AED]">
-                    C1
-                  </p>
-                  <h1 className="text-xl font-bold text-[#211A4A]">
-                    Mais acesso
-                  </h1>
+                  <p className="text-[10px] font-bold uppercase tracking-wide text-[#003B8E]">C1</p>
+                  <h2 className="text-xl font-extrabold text-[#003B8E]">Mais acesso</h2>
                 </div>
               </div>
 
-              <p className="mt-4 max-w-2xl text-sm leading-relaxed text-gray-500">
-                Acompanhamento da proporção de atendimentos de demanda
-                programada em relação ao total de atendimentos de demanda
-                programada e espontânea.
+              <p className="mt-4 max-w-2xl text-sm leading-relaxed text-[#39708A]">
+                Acompanhamento da proporção de atendimentos de demanda programada em relação ao total de atendimentos de demanda programada e espontânea.
               </p>
             </div>
 
-            <div className="rounded-2xl bg-[#F8F7FF] px-6 py-4 text-right">
+            <div className="rounded-2xl border border-[#B7C8F5] bg-gradient-to-br from-[#EEF2FF] via-white to-[#DDE7FF] px-6 py-4 text-right shadow-[0_5px_12px_rgba(0,59,142,0.10)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_9px_18px_rgba(0,59,142,0.14)]">
               <p className="text-[10px] font-medium text-gray-400">
                 Resultado do C1
               </p>
 
-              <p className="mt-1 text-3xl font-extrabold text-[#7C3AED]">
+              <p className="mt-1 text-3xl font-extrabold text-[#003B8E]">
                 {carregandoC1
                   ? "..."
                   : percentual !== null
@@ -253,56 +262,56 @@ export default function C1MaisAcessoPage() {
         {!erro && resultado?.possuiDados && (
           <>
             <section className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
-                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-100">
-                  <CheckCircle2 size={17} className="text-emerald-600" />
+              <div className="rounded-2xl border border border-[#A7E6C0] bg-gradient-to-br from-[#ECFDF3] via-white to-[#DDF7E7] p-5 shadow-[0_6px_14px_rgba(0,0,0,0.05)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_10px_20px_rgba(0,156,59,0.18)]">
+                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#D9F6E5]">
+                  <CheckCircle2 size={17} className="text-[#009C3B]" />
                 </div>
-                <p className="mt-4 text-2xl font-bold text-emerald-900">
+                <p className="mt-4 text-2xl font-bold text-[#003B8E]">
                   {formatarNumero(programados)}
                 </p>
-                <p className="mt-1 text-[10px] font-medium text-emerald-700">
+                <p className="mt-1 text-[10px] font-medium text-[#39705A]">
                   Atendimentos programados
                 </p>
               </div>
 
-              <div className="rounded-2xl border border-sky-200 bg-sky-50 p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
-                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-sky-100">
-                  <Clock3 size={17} className="text-sky-600" />
+              <div className="rounded-2xl border border border-[#9EDFF2] bg-gradient-to-br from-[#EAF7FC] via-white to-[#D7F1FA] p-5 shadow-[0_6px_14px_rgba(0,0,0,0.05)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_10px_20px_rgba(0,169,232,0.18)]">
+                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#DDF4FC]">
+                  <Clock3 size={17} className="text-[#00A9E8]" />
                 </div>
-                <p className="mt-4 text-2xl font-bold text-sky-900">
+                <p className="mt-4 text-2xl font-bold text-[#003B8E]">
                   {formatarNumero(espontaneos)}
                 </p>
-                <p className="mt-1 text-[10px] font-medium text-sky-700">
+                <p className="mt-1 text-[10px] font-medium text-[#39708A]">
                   Atendimentos espontâneos
                 </p>
               </div>
 
-              <div className="rounded-2xl border border-violet-200 bg-violet-50 p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
-                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-violet-100">
-                  <UsersRound size={17} className="text-violet-600" />
+              <div className="rounded-2xl border border border-[#C9B8F5] bg-gradient-to-br from-[#F3EEFF] via-white to-[#E8DEFF] p-5 shadow-[0_6px_14px_rgba(0,0,0,0.05)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_10px_20px_rgba(124,58,237,0.16)]">
+                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#E5F5FB]">
+                  <UsersRound size={17} className="text-[#7C3AED]" />
                 </div>
-                <p className="mt-4 text-2xl font-bold text-violet-900">
+                <p className="mt-4 text-2xl font-bold text-[#003B8E]">
                   {formatarNumero(total)}
                 </p>
-                <p className="mt-1 text-[10px] font-medium text-violet-700">
+                <p className="mt-1 text-[10px] font-medium text-[#5B4A8A]">
                   Total considerado no cálculo
                 </p>
               </div>
 
-              <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
-                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-amber-100">
-                  <ClipboardList size={17} className="text-amber-600" />
+              <div className="rounded-2xl border border border-[#F5D66A] bg-gradient-to-br from-[#FFF9E5] via-white to-[#FFF1B8] p-5 shadow-[0_6px_14px_rgba(0,0,0,0.05)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_10px_20px_rgba(242,195,0,0.18)]">
+                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#FFF1B8]">
+                  <ClipboardList size={17} className="text-[#C78A00]" />
                 </div>
-                <p className="mt-4 text-2xl font-bold text-amber-900">
+                <p className="mt-4 text-2xl font-bold text-[#003B8E]">
                   {formatarNumero(naoInformados)}
                 </p>
-                <p className="mt-1 text-[10px] font-medium text-amber-700">
+                <p className="mt-1 text-[10px] font-medium text-[#8A6500]">
                   Não informados/ignorados
                 </p>
               </div>
             </section>
 
-            <section className="mt-4 rounded-2xl border border-[#E5E0EC] bg-white p-5 shadow-sm sm:p-6">
+            <section className="mt-4 rounded-2xl border border-[#DDEAF2] bg-white p-5 shadow-[0_5px_14px_rgba(0,59,142,0.07)] sm:p-6 transition-all duration-200 hover:shadow-[0_8px_18px_rgba(0,59,142,0.10)]">
               <h2 className="text-sm font-bold text-[#211A4A]">
                 Composição do indicador
               </h2>
@@ -313,14 +322,14 @@ export default function C1MaisAcessoPage() {
                     <span className="font-medium text-gray-500">
                       Demanda programada
                     </span>
-                    <span className="font-bold text-[#7C3AED]">
+                    <span className="font-bold text-[#003B8E]">
                       {formatarNumero(programados)}
                     </span>
                   </div>
 
                   <div className="h-3 overflow-hidden rounded-full bg-[#EEE7FF]">
                     <div
-                      className="h-full rounded-full bg-[#7C3AED] transition-all"
+                      className="h-full rounded-full bg-[#00A9E8] transition-all"
                       style={{
                         width: `${
                           total > 0
@@ -357,7 +366,7 @@ export default function C1MaisAcessoPage() {
                 </div>
               </div>
 
-              <div className="mt-6 rounded-xl bg-[#F8F7FF] p-4 text-[10px] leading-relaxed text-gray-500">
+              <div className="mt-6 rounded-xl border border-[#E5EAF7] bg-gradient-to-r from-[#F4F8FF] to-[#F7F5FF] p-4 text-[10px] leading-relaxed text-gray-500">
                 <strong className="text-[#211A4A]">Fórmula:</strong>{" "}
                 atendimentos de demanda programada ÷ (atendimentos de demanda
                 programada + atendimentos de demanda espontânea) × 100.
@@ -365,7 +374,7 @@ export default function C1MaisAcessoPage() {
             </section>
 
             <section className="mt-4 grid gap-4 lg:grid-cols-2">
-              <div className="rounded-2xl border border-[#E5E0EC] bg-white p-5 shadow-sm">
+              <div className="rounded-2xl border border-[#DDEAF2] bg-white p-5 shadow-[0_5px_14px_rgba(0,59,142,0.07)]">
                 <h2 className="text-sm font-bold">Período e equipe</h2>
 
                 <div className="mt-4 space-y-3 text-[10px]">
@@ -392,7 +401,7 @@ export default function C1MaisAcessoPage() {
                 </div>
               </div>
 
-              <div className="rounded-2xl border border-[#E5E0EC] bg-white p-5 shadow-sm">
+              <div className="rounded-2xl border border-[#DDEAF2] bg-white p-5 shadow-[0_5px_14px_rgba(0,59,142,0.07)]">
                 <h2 className="text-sm font-bold">Critérios do C1</h2>
 
                 <ul className="mt-4 space-y-3 text-[10px] leading-relaxed text-gray-500">

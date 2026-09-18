@@ -21,11 +21,13 @@ import {
 } from "lucide-react";
 
 import { useEffect, useState } from "react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { auth } from "@/lib/firebase";
 import { useAuth } from "@/context/AuthContext";
 import ModalCadastrarACS from "@/components/acs/ModalCadastrarACS";
 import TourBrasil360 from "@/components/tour/TourBrasil360";
+import LoadingBrasil360 from "@/components/ui/LoadingBrasil360";
 
 /**
  * Cards dos indicadores Brasil 360.
@@ -38,42 +40,42 @@ const indicadores = [
     codigo: "C2",
     titulo: "Desenvolvimento Infantil",
     descricao: "Acompanhamento infantil",
-    cor: "#3B82F6",
+    cor: "#003B8E",
     icone: Baby,
   },
   {
     codigo: "C3",
     titulo: "Gestação e Puerpério",
     descricao: "Gestantes e puérperas",
-    cor: "#EC4899",
+    cor: "#00A9E8",
     icone: Heart,
   },
   {
     codigo: "C4",
     titulo: "Diabetes",
     descricao: "Cuidado da pessoa com diabetes",
-    cor: "#F59E0B",
+    cor: "#F2C300",
     icone: Droplets,
   },
   {
     codigo: "C5",
     titulo: "Hipertensão",
     descricao: "Cuidado da pessoa com hipertensão",
-    cor: "#EF4444",
+    cor: "#F2C300",
     icone: Activity,
   },
   {
     codigo: "C6",
     titulo: "Pessoa Idosa",
     descricao: "Cuidado da pessoa idosa",
-    cor: "#10B981",
+    cor: "#062B63",
     icone: UsersRound,
   },
   {
     codigo: "C7",
     titulo: "Câncer da Mulher",
     descricao: "Prevenção do câncer",
-    cor: "#8B5CF6",
+    cor: "#009C3B",
     icone: Venus,
   },
 ];
@@ -629,13 +631,13 @@ export default function DashboardPage() {
    */
   if (carregando) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-[#F8F7FF]">
+      <main className="flex min-h-screen items-center justify-center bg-[#F8FAFC]">
         <div className="text-center">
-          <div className="mx-auto mb-4 h-9 w-9 animate-spin rounded-full border-4 border-[#7C3AED]/20 border-t-[#7C3AED]" />
-
-          <p className="text-sm font-semibold text-[#4C1D95]">
-            Carregando...
-          </p>
+          <LoadingBrasil360
+          mensagem="Carregando..."
+          subtitulo="Buscando as importações da UBS"
+          />
+          
         </div>
       </main>
     );
@@ -677,7 +679,7 @@ export default function DashboardPage() {
       : null;
 
   return (
-    <main data-tour="tour-dashboard" className="min-h-screen bg-[#F8F7FF] text-[#211A4A]">
+    <main data-tour="tour-dashboard" className="min-h-screen bg-[#F8FAFC] text-[#062B63]">
 
       <div className="flex min-h-screen">
 
@@ -686,27 +688,33 @@ export default function DashboardPage() {
             Tablet portrait
         ====================================================== */}
 
-        <aside className="hidden w-[150px] shrink-0 flex-col border-r border-[#E7E2F2] bg-white lg:flex">
+        <aside className="hidden w-[190px] shrink-0 flex-col border-r border-[#DCE8F5] bg-white lg:flex">
 
           {/* Logo */}
-          <div className="border-b border-[#E7E2F2] px-4 py-5">
+          <div className="border-b border-[#DCE8F5] px-4 py-5">
 
             <div className="flex items-center gap-2">
 
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#7C3AED]">
-                <HeartPulse
-                  size={17}
-                  className="text-white"
-                />
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#003B8E] shadow-sm">
+                <img
+                src="/brasil360-logo-header.png"
+                alt="Brasil 360"
+                className="h-14 w-[88px] object-contain"
+              />
               </div>
 
-              <span className="text-[11px] font-bold text-[#4C1D95]">
-                Indicadores
-              </span>
+              <div className="min-w-0">
+                <p className="text-[11px] font-black tracking-tight text-[#003B8E]">
+                  BR<span className="text-[#00A9E8]">3</span><span className="text-[#009C3B]">6</span><span className="text-[#F2C300]">0</span>
+                </p>
+                <p className="text-[7px] font-semibold uppercase tracking-wide text-[#003B8E]">
+                  Indicadores
+                </p>
+              </div>
 
             </div>
 
-            <p className="mt-4 text-[8px] font-bold uppercase tracking-wide text-[#7C3AED]">
+            <p className="mt-4 text-[8px] font-bold uppercase tracking-wide text-[#003B8E]">
               Enfermeira Gestora
             </p>
 
@@ -717,7 +725,7 @@ export default function DashboardPage() {
 
             <button
               type="button"
-              className="mb-2 flex w-full items-center gap-3 rounded-lg bg-[#EEE7FF] px-3 py-3 text-left text-[10px] font-semibold text-[#7C3AED]"
+              className="mb-2 flex w-full items-center gap-3 rounded-lg bg-[#EAF4FF] px-3 py-3 text-left text-[10px] font-semibold text-[#003B8E]"
             >
               <LayoutDashboard size={15} />
               Início
@@ -726,7 +734,7 @@ export default function DashboardPage() {
             <button
               type="button"
               onClick={() => router.push("/equipe")}
-              className="mb-2 flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left text-[10px] text-gray-500 transition hover:bg-[#F8F7FF]"
+              className="mb-2 flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left text-[10px] text-gray-500 transition hover:bg-[#F8FAFC]"
             >
               <UsersRound size={15} />
               Equipe
@@ -735,7 +743,7 @@ export default function DashboardPage() {
            <button
           type="button"
           onClick={() => router.push("/historico")}
-          className="mb-2 flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left text-[10px] text-gray-500 transition hover:bg-[#F8F7FF]"
+          className="mb-2 flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left text-[10px] text-gray-500 transition hover:bg-[#F8FAFC]"
         >
           <FileBarChart size={15} />
           Relatórios
@@ -744,7 +752,7 @@ export default function DashboardPage() {
             <button
               type="button"
               onClick={() => router.push("/config")}
-              className="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left text-[10px] text-gray-500 transition hover:bg-[#F8F7FF]"
+              className="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left text-[10px] text-gray-500 transition hover:bg-[#F8FAFC]"
             >
               <Settings size={15} />
               Config
@@ -753,21 +761,21 @@ export default function DashboardPage() {
           </nav>
 
           {/* Usuário */}
-          <div className="border-t border-[#E7E2F2] p-3">
+          <div className="border-t border-[#DCE8F5] p-3">
 
             <div className="flex items-center gap-2">
 
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#EEE7FF]">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#EAF4FF]">
                 <UserRound
                   size={15}
-                  className="text-[#7C3AED]"
+                  className="text-[#003B8E]"
                 />
               </div>
 
               <div className="min-w-0 flex-1">
 
                 <p className="truncate text-[9px] font-semibold">
-                  {primeiroNome}
+                  {usuario.nome}
                 </p>
 
                 <p className="truncate text-[8px] text-gray-400">
@@ -802,52 +810,37 @@ export default function DashboardPage() {
               Tablet: identidade visual do Brasil 360
               Desktop: mantém o cabeçalho compacto
           ================================================== */}
-          <header className="px-3 pt-3 sm:px-5 sm:pt-4 lg:px-7 lg:py-5">
+          <header>
+            <div className="relative isolate overflow-hidden rounded-b-[28px] border border-emerald-200/60 bg-gradient-to-br from-[#009C3B]/95 via-[#00A9E8]/85 to-[#F2C300]/85 px-8 py-6 text-white shadow-[0_12px_30px_rgba(0,156,59,0.18),0_5px_12px_rgba(0,59,142,0.12)] backdrop-blur-md">
+              <div className="pointer-events-none absolute -left-10 -top-14 h-32 w-32 rounded-full bg-white/20 blur-2xl" />
+              <div className="pointer-events-none absolute right-8 -top-16 h-40 w-40 rounded-full bg-[#F2C300]/25 blur-3xl" />
+              <div className="pointer-events-none absolute bottom-[-70px] left-1/2 h-40 w-64 -translate-x-1/2 rounded-full bg-[#00A9E8]/20 blur-3xl" />
 
-            <div
-              className="relative overflow-hidden rounded-[26px] border border-white/70 bg-gradient-to-br from-[#F5F3FF]/95 via-[#E9E4FF]/82 to-[#D8CCFF]/90 px-5 py-5 text-[#211A4A] shadow-[0_14px_35px_rgba(124,58,237,0.16),inset_0_1px_0_rgba(255,255,255,0.9),inset_0_-1px_0_rgba(124,58,237,0.08)] backdrop-blur-md sm:px-6 sm:py-6 lg:rounded-none lg:border-0 lg:bg-transparent lg:px-0 lg:py-0 lg:text-[#211A4A] lg:shadow-none lg:backdrop-blur-none"
-            >
-              {/* Elementos decorativos — profundidade 3D */}
-              <div className="pointer-events-none absolute -right-10 -top-12 h-36 w-36 rounded-full bg-[#8B5CF6]/18 shadow-[inset_8px_8px_18px_rgba(255,255,255,0.45),inset_-8px_-8px_18px_rgba(124,58,237,0.08)] lg:hidden" />
-              <div className="pointer-events-none absolute -bottom-16 right-20 h-32 w-32 rounded-full border border-[#8B5CF6]/15 bg-white/10 shadow-[inset_4px_4px_12px_rgba(255,255,255,0.5)] lg:hidden" />
-              <div className="pointer-events-none absolute inset-x-10 top-0 h-px bg-white/80 lg:hidden" />
+              <div className="relative">
+                <p className="text-[11px] font-semibold text-white/85">
+                  Enfermeira Gestora
+                </p>
 
-              <div className="relative z-10 flex items-start gap-4">
-                <div className="min-w-0">
+                <h1 className="mt-1 text-2xl font-bold tracking-tight drop-shadow-sm">
+                  Olá, {usuario.nome} <span aria-hidden="true">👋</span>
+                </h1>
 
-                  <div className="mb-3 flex items-center">
-                    <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/80 bg-white/45 shadow-[0_5px_12px_rgba(124,58,237,0.12),inset_0_1px_0_rgba(255,255,255,0.9)] backdrop-blur-sm lg:bg-[#EEE7FF] lg:shadow-none">
-                      <HeartPulse
-                        size={18}
-                        className="text-[#7C3AED]"
-                      />
-                    </div>
-                  </div>
-
-                  <h1 className="text-xl font-extrabold leading-tight text-[#211A4A] sm:text-2xl lg:text-lg lg:font-bold">
-                    Olá, {primeiroNome} <span aria-hidden="true">👋</span>
-                  </h1>
-
-                  <p className="mt-2 max-w-[90%] text-[10px] font-medium leading-relaxed text-[#5B527A] lg:mt-1 lg:max-w-none lg:text-[9px] lg:font-normal lg:text-gray-400">
-                    {ubs?.nome || "UBS"} •{" "}
-                    {ubs?.municipio || ""}{" "}
-                    {ubs?.uf ? `• ${ubs.uf}` : ""}
-                  </p>
-
-                </div>
+                <p className="mt-1 text-[10px] text-white/90">
+                  {ubs?.nome || "UBS"} • {ubs?.municipio || ""} {ubs?.uf ? `• ${ubs.uf}` : ""}
+                </p>
               </div>
 
-              <div className="relative z-10 mt-5 flex items-center gap-2 lg:hidden">
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 shadow-[0_0_7px_rgba(52,211,153,0.45)]" />
-                <span className="text-[8px] font-medium text-[#625A80]">
-                  Painel da equipe de saúde
-                </span>
-              </div>
+                <img
+                  src="/brasil360-logo-header.png"
+                  alt="Brasil 360"
+                  width={88}
+                  height={88}
+                  className="absolute right-5 top-1/2 h-16 w-16 -translate-y-1/2 rounded-2xl object-cover shadow-[0_8px_18px_rgba(0,59,142,0.22)] ring-1 ring-white/50 sm:h-20 sm:w-20"
+                />
             </div>
-
           </header>
 
-          <div className="px-7 pb-8">
+          <div className="px-7 pt-5 pb-8">
 
             {/* =================================================
                 CARDS RESUMO
@@ -859,7 +852,7 @@ export default function DashboardPage() {
 <button
   type="button"
   onClick={() => router.push("/equipe")}
-  className="relative min-h-[105px] w-full cursor-pointer overflow-hidden rounded-2xl bg-[#7C3AED] p-4 text-left text-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+  className="group relative min-h-[105px] w-full cursor-pointer overflow-hidden rounded-2xl border border-[#67D0F2] bg-gradient-to-br from-[#00A9E8] to-[#008FC5] p-4 text-left text-white shadow-[0_7px_14px_rgba(0,169,232,0.22),0_2px_4px_rgba(0,59,142,0.10)] transition-all duration-200 hover:-translate-y-1 hover:shadow-[0_12px_22px_rgba(0,169,232,0.28),0_4px_8px_rgba(0,59,142,0.14)]"
 >
   <UsersRound
     size={18}
@@ -883,8 +876,10 @@ export default function DashboardPage() {
               {/* Pacientes */}
               <div 
               onClick={() => router.push("/pacientes")}
-              className="relative min-h-[105px] w-full cursor-pointer overflow-hidden rounded-2xl bg-[#7C3AED] p-4 text-left text-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+              className="group relative min-h-[105px] w-full cursor-pointer overflow-hidden rounded-2xl border border-[#5B8FC9] bg-gradient-to-br from-[#003B8E] to-[#062B63] p-4 text-left text-white shadow-[0_7px_14px_rgba(0,59,142,0.22),0_2px_4px_rgba(0,59,142,0.10)] transition-all duration-200 hover:-translate-y-1 hover:shadow-[0_12px_22px_rgba(0,59,142,0.28),0_4px_8px_rgba(0,59,142,0.14)]"
               >
+                <div className="pointer-events-none absolute -right-8 -top-8 h-20 w-20 rounded-full bg-white/10 blur-2xl transition-transform duration-300 group-hover:scale-125" />
+
                 <UserRound
                   size={18}
                   className="absolute right-4 top-4 opacity-50"
@@ -906,7 +901,9 @@ export default function DashboardPage() {
               </div>
 
               {/* Progresso */}
-              <div className="relative min-h-[105px] overflow-hidden rounded-2xl bg-[#7C3AED] p-4 text-white shadow-sm">
+              <div className="group relative min-h-[105px] overflow-hidden rounded-2xl border border-[#58C78B] bg-gradient-to-br from-[#009C3B] to-[#007A2E] p-4 text-white shadow-[0_7px_14px_rgba(0,156,59,0.22),0_2px_4px_rgba(0,59,142,0.10)] transition-all duration-200 hover:-translate-y-1 hover:shadow-[0_12px_22px_rgba(0,156,59,0.28),0_4px_8px_rgba(0,59,142,0.14)]">
+
+                <div className="pointer-events-none absolute -right-8 -top-8 h-20 w-20 rounded-full bg-white/12 blur-2xl transition-transform duration-300 group-hover:scale-125" />
 
                 <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-white/15">
                   <Activity size={15} />
@@ -932,12 +929,12 @@ export default function DashboardPage() {
               </div>
 
               {/* Acessos */}
-              <div className="relative min-h-[105px] overflow-hidden rounded-2xl border border-[#E5E0EC] bg-white p-4 shadow-sm">
+              <div className="group relative min-h-[105px] overflow-hidden rounded-2xl border border-[#B8D8EA] bg-gradient-to-br from-white to-[#F1FAFD] p-4 shadow-[0_7px_14px_rgba(0,59,142,0.08),0_2px_4px_rgba(0,169,232,0.06)] transition-all duration-200 hover:-translate-y-1 hover:border-[#8BCDE5] hover:shadow-[0_12px_22px_rgba(0,169,232,0.14),0_4px_8px_rgba(0,59,142,0.10)]">
 
-                <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#D1FAE5]">
+                <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#DDF7EA]">
                   <ShieldCheck
                     size={15}
-                    className="text-[#10B981]"
+                    className="text-[#009C3B]"
                   />
                 </div>
 
@@ -949,7 +946,7 @@ export default function DashboardPage() {
                   Acessos registrados
                 </p>
 
-                <div className="mt-3 h-1.5 rounded-full bg-[#D1FAE5]" />
+                <div className="mt-3 h-1.5 rounded-full bg-[#DDF7EA]" />
 
               </div>
 
@@ -962,7 +959,7 @@ export default function DashboardPage() {
             <div className="mt-7 flex items-center justify-between">
 
               <div>
-                <h2 className="text-sm font-bold text-[#211A4A]">
+                <h2 className="text-sm font-bold text-[#062B63]">
                   Indicadores APS Brasil 360
                 </h2>
 
@@ -974,7 +971,7 @@ export default function DashboardPage() {
               <button
                 type="button"
                 onClick={() => router.push("/indicadores/c5")}
-                className="text-[9px] font-semibold text-[#7C3AED]"
+                className="text-[9px] font-semibold text-[#003B8E]"
               >
                 Ver C5 →
               </button>
@@ -982,7 +979,8 @@ export default function DashboardPage() {
             </div>
 
             {/* Situação dos pacientes */}
-            <section data-tour="tour-situacao" className="mt-3 rounded-2xl border border-[#E5E0EC] bg-white p-5 shadow-sm">
+            <section data-tour="tour-situacao" className="group relative mt-3 overflow-hidden rounded-2xl border border-[#B8DFF0] bg-gradient-to-br from-[#F8FCFF] via-[#F2FAFE] to-[#EAF7FC] p-5 shadow-[0_8px_18px_rgba(0,59,142,0.10),0_3px_7px_rgba(0,169,232,0.08)] transition-all duration-200 hover:-translate-y-1 hover:border-[#8FD0E8] hover:shadow-[0_14px_26px_rgba(0,59,142,0.14),0_5px_10px_rgba(0,169,232,0.12)]">
+              <div className="pointer-events-none absolute -right-12 -top-12 h-28 w-28 rounded-full bg-[#00A9E8]/10 blur-3xl transition-transform duration-300 group-hover:scale-125" />
 
               <h3 className="text-[11px] font-bold">
                 Situação dos pacientes da equipe
@@ -1002,16 +1000,16 @@ export default function DashboardPage() {
                   {
                     label: "Com indicadores pendentes",
                     valor: situacaoPacientes?.comIndicadoresPendentes ?? 0,
-                    corTexto: "text-[#F59E0B]",
-                    corFundo: "bg-[#FEF3C7]",
-                    corBarra: "bg-[#F59E0B]",
+                    corTexto: "text-[#F2C300]",
+                    corFundo: "bg-[#FFF4C2]",
+                    corBarra: "bg-[#F2C300]",
                   },
                   {
                     label: "Com indicadores concluídos",
                     valor: situacaoPacientes?.comIndicadoresConcluidos ?? 0,
-                    corTexto: "text-[#10B981]",
-                    corFundo: "bg-[#D1FAE5]",
-                    corBarra: "bg-[#10B981]",
+                    corTexto: "text-[#009C3B]",
+                    corFundo: "bg-[#DDF7EA]",
+                    corBarra: "bg-[#009C3B]",
                   },
                 ].map((item) => {
                   const total = situacaoPacientes?.totalPacientes ?? 0;
@@ -1053,7 +1051,7 @@ export default function DashboardPage() {
                   Indicadores concluídos
                 </span>
 
-                <span className="text-xl font-bold text-[#7C3AED]">
+                <span className="text-xl font-bold text-[#003B8E]">
                   {carregandoSituacaoPacientes
                     ? "..."
                     : situacaoPacientes
@@ -1078,8 +1076,9 @@ export default function DashboardPage() {
 
             <section
               data-tour="tour-equipe"
-              className="mt-3 rounded-2xl border border-[#E5E0EC] bg-white p-5 shadow-sm"
+              className="group relative mt-3 overflow-hidden rounded-2xl border border-[#B8DFF0] bg-gradient-to-br from-[#F8FCFF] via-[#F2FAFE] to-[#EAF7FC] p-5 shadow-[0_8px_18px_rgba(0,59,142,0.10),0_3px_7px_rgba(0,169,232,0.08)] transition-all duration-200 hover:-translate-y-1 hover:border-[#8FD0E8] hover:shadow-[0_14px_26px_rgba(0,59,142,0.14),0_5px_10px_rgba(0,169,232,0.12)]"
             >
+              <div className="pointer-events-none absolute -right-12 -top-12 h-28 w-28 rounded-full bg-[#00A9E8]/10 blur-3xl transition-transform duration-300 group-hover:scale-125" />
 
               <div className="flex items-center justify-between">
 
@@ -1090,7 +1089,7 @@ export default function DashboardPage() {
                 <button
                   type="button"
                   onClick={() => router.push("/equipe")}
-                  className="text-[9px] font-medium text-[#7C3AED]"
+                  className="text-[9px] font-medium text-[#003B8E]"
                 >
                   Ver todos →
                 </button>
@@ -1111,7 +1110,7 @@ export default function DashboardPage() {
                 <button
                   type="button"
                   onClick={() => setModalCadastrarACS(true)}
-                  className="mt-3 rounded-lg bg-[#7C3AED] px-4 py-2 text-[9px] font-semibold text-white transition hover:bg-[#6D28D9]"
+                  className="mt-3 rounded-lg bg-[#003B8E] px-4 py-2 text-[9px] font-semibold text-white transition hover:bg-[#062B63]"
                 >
                   Convidar ACS
                 </button>
@@ -1135,7 +1134,7 @@ export default function DashboardPage() {
                       <button
                         type="button"
                         onClick={() => router.push("/indicadores/c2")}
-                        className="relative flex min-h-[145px] flex-col justify-between overflow-hidden rounded-2xl p-3 text-left text-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+                        className="group relative flex min-h-[145px] flex-col justify-between overflow-hidden rounded-2xl border border-white/25 p-3 text-left text-white shadow-[0_8px_16px_rgba(0,59,142,0.18),0_2px_5px_rgba(0,0,0,0.08)] transition-all duration-200 hover:-translate-y-1 hover:shadow-[0_14px_24px_rgba(0,59,142,0.24),0_4px_8px_rgba(0,0,0,0.10)]"
                         style={{ backgroundColor: indicador.cor }}
                       >
                         <div className="flex items-center justify-between">
@@ -1163,7 +1162,7 @@ export default function DashboardPage() {
                       <button
                         type="button"
                         onClick={() => router.push("/indicadores/bucal")}
-                        className="relative flex min-h-[145px] flex-col justify-between overflow-hidden rounded-2xl bg-[#14B8A6] p-3 text-left text-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+                        className="group relative flex min-h-[145px] flex-col justify-between overflow-hidden rounded-2xl border border-[#58C78B] bg-gradient-to-br from-[#009C3B] to-[#007A2E] p-3 text-left text-white shadow-[0_8px_16px_rgba(0,156,59,0.20),0_2px_5px_rgba(0,59,142,0.08)] transition-all duration-200 hover:-translate-y-1 hover:shadow-[0_14px_24px_rgba(0,156,59,0.26),0_4px_8px_rgba(0,59,142,0.10)]"
                       >
                         <div className="flex items-center justify-between">
                           <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-white/20">
@@ -1214,7 +1213,7 @@ export default function DashboardPage() {
                         router.push("/indicadores/c7");
                       }
                     }}
-                    className="relative flex min-h-[145px] flex-col justify-between overflow-hidden rounded-2xl p-4 text-left text-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+                    className="group relative flex min-h-[145px] flex-col justify-between overflow-hidden rounded-2xl border border-white/25 p-4 text-left text-white shadow-[0_8px_16px_rgba(0,59,142,0.18),0_2px_5px_rgba(0,0,0,0.08)] transition-all duration-200 hover:-translate-y-1 hover:shadow-[0_14px_24px_rgba(0,59,142,0.24),0_4px_8px_rgba(0,0,0,0.10)]"
                     style={{
                       backgroundColor: indicador.cor,
                     }}
@@ -1370,15 +1369,16 @@ export default function DashboardPage() {
               data-tour="tour-c1"
               type="button"
               onClick={() => router.push("/indicadores/c1")}
-              className="mt-3 w-full rounded-2xl border border-[#E5E0EC] bg-white px-5 py-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+              className="group relative mt-3 w-full overflow-hidden rounded-2xl border border-[#B8D8EA] bg-gradient-to-br from-white to-[#F4FAFD] px-5 py-4 text-left shadow-[0_7px_16px_rgba(0,59,142,0.08),0_2px_5px_rgba(0,169,232,0.05)] transition-all duration-200 hover:-translate-y-1 hover:border-[#8BCDE5] hover:shadow-[0_12px_22px_rgba(0,169,232,0.13),0_4px_8px_rgba(0,59,142,0.09)]"
             >
+              <div className="pointer-events-none absolute -right-10 -top-10 h-24 w-24 rounded-full bg-[#00A9E8]/10 blur-2xl transition-transform duration-300 group-hover:scale-125" />
 
-              <div className="flex items-center gap-4">
+              <div className="relative flex items-center gap-4">
 
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#EEE7FF]">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#EAF4FF]">
                   <CalendarDays
                     size={18}
-                    className="text-[#7C3AED]"
+                    className="text-[#003B8E]"
                   />
                 </div>
 
@@ -1395,7 +1395,7 @@ export default function DashboardPage() {
                 </div>
 
                 <div className="text-right">
-                  <span className="text-lg font-bold text-[#7C3AED]">
+                  <span className="text-lg font-bold text-[#003B8E]">
                     {carregandoC1
                       ? "..."
                       : c1?.possuiDados && c1.percentualProgramado !== null
@@ -1430,11 +1430,11 @@ export default function DashboardPage() {
                 AVISO
             ================================================== */}
 
-            <div className="mt-3 flex items-center gap-3 rounded-xl bg-[#F1EDF9] px-4 py-3">
+            <div className="mt-3 flex items-center gap-3 rounded-2xl border border-[#C9E8F5] bg-gradient-to-r from-[#EFF9FD] to-[#F6FBFE] px-4 py-3 shadow-[0_4px_10px_rgba(0,169,232,0.06)]">
 
               <ClipboardList
                 size={15}
-                className="shrink-0 text-[#7C3AED]"
+                className="shrink-0 text-[#003B8E]"
               />
 
               <p className="text-[8px] leading-relaxed text-gray-500">
@@ -1452,16 +1452,16 @@ export default function DashboardPage() {
           NAVEGAÇÃO INFERIOR
           Tablet e celular
       ====================================================== */}
-      <nav data-tour="tour-menu" className="fixed inset-x-0 bottom-0 z-50 border-t border-[#E7E2F2] bg-white/95 px-3 pb-[env(safe-area-inset-bottom)] pt-2 shadow-[0_-4px_16px_rgba(33,26,74,0.08)] backdrop-blur lg:hidden">
+      <nav data-tour="tour-menu" className="fixed inset-x-0 bottom-0 z-50 border-t border-[#DCE8F5] bg-white/95 px-3 pb-[env(safe-area-inset-bottom)] pt-2 shadow-[0_-4px_16px_rgba(33,26,74,0.08)] backdrop-blur lg:hidden">
         <div className="mx-auto flex max-w-2xl items-center justify-around">
 
           {/* Início */}
           <button
             type="button"
             onClick={() => router.push("/dashboard")}
-            className="flex min-w-[64px] flex-col items-center gap-1 rounded-xl px-3 py-2 text-[#7C3AED]"
+            className="flex min-w-[64px] flex-col items-center gap-1 rounded-xl px-3 py-2 text-[#003B8E]"
           >
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#EEE7FF]">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#EAF4FF]">
               <LayoutDashboard size={17} />
             </div>
             <span className="text-[9px] font-semibold">Início</span>
@@ -1471,7 +1471,7 @@ export default function DashboardPage() {
           <button
             type="button"
             onClick={() => router.push("/equipe")}
-            className="flex min-w-[64px] flex-col items-center gap-1 rounded-xl px-3 py-2 text-gray-500 transition hover:bg-[#F8F7FF]"
+            className="flex min-w-[64px] flex-col items-center gap-1 rounded-xl px-3 py-2 text-gray-500 transition hover:bg-[#F8FAFC]"
           >
             <div className="flex h-8 w-8 items-center justify-center rounded-lg">
               <UsersRound size={17} />
@@ -1483,7 +1483,7 @@ export default function DashboardPage() {
           <button
             type="button"
             onClick={() => router.push("/historico")}
-            className="flex min-w-[64px] flex-col items-center gap-1 rounded-xl px-3 py-2 text-gray-500 transition hover:bg-[#F8F7FF]"
+            className="flex min-w-[64px] flex-col items-center gap-1 rounded-xl px-3 py-2 text-gray-500 transition hover:bg-[#F8FAFC]"
           >
             <div className="flex h-8 w-8 items-center justify-center rounded-lg">
               <FileBarChart size={17} />
@@ -1495,7 +1495,7 @@ export default function DashboardPage() {
           <button
             type="button"
             onClick={() => router.push("/config")}
-            className="flex min-w-[64px] flex-col items-center gap-1 rounded-xl px-3 py-2 text-gray-500 transition hover:bg-[#F8F7FF]"
+            className="flex min-w-[64px] flex-col items-center gap-1 rounded-xl px-3 py-2 text-gray-500 transition hover:bg-[#F8FAFC]"
           >
             <div className="flex h-8 w-8 items-center justify-center rounded-lg">
               <Settings size={17} />

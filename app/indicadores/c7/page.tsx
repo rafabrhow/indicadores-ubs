@@ -156,7 +156,7 @@ export default function C7Page() {
 
   if (carregando) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-[#F8F7FF]">
+      <main className="flex min-h-screen items-center justify-center bg-[#F7FAFC]">
         <div className="h-9 w-9 animate-spin rounded-full border-4 border-[#10B981]/20 border-t-[#10B981]" />
       </main>
     );
@@ -164,10 +164,10 @@ export default function C7Page() {
 
   if (erro) {
     return (
-      <main className="min-h-screen bg-[#F8F7FF] p-6 text-[#211A4A]">
+      <main className="min-h-screen bg-[#F7FAFC] p-6 text-[#003B8E]">
         <button
           onClick={() => router.back()}
-          className="mb-5 flex items-center gap-1 text-xs font-semibold text-[#7C3AED]"
+          className="mb-5 flex items-center gap-1 text-xs font-semibold text-[#003B8E]"
         >
           <ChevronLeft size={15} /> Voltar
         </button>
@@ -181,17 +181,25 @@ export default function C7Page() {
 
   if (!dados?.possuiDados) {
     return (
-      <main className="min-h-screen bg-[#F8F7FF] text-[#211A4A]">
-        <header className="bg-[#8B5CF6] px-6 py-4 text-white">
-          <button onClick={() => router.back()} className="flex items-center gap-1 text-xs">
-            <ChevronLeft size={14} /> Voltar
-          </button>
-          <p className="mt-3 text-[8px] font-bold uppercase">Indicadores APS Brasil 360</p>
-          <h1 className="text-lg font-extrabold">C7 — Saúde da Mulher</h1>
+      <main className="min-h-screen bg-[#F7FAFC] text-[#003B8E]">
+        <header className="relative isolate overflow-hidden rounded-b-[28px] border border-emerald-200/60 bg-gradient-to-br from-[#009C3B]/95 via-[#00A9E8]/85 to-[#F2C300]/85 px-5 py-5 text-white shadow-[0_10px_24px_rgba(0,156,59,0.16),0_4px_10px_rgba(0,59,142,0.10)] backdrop-blur-md">
+          <div className="pointer-events-none absolute -left-10 -top-14 h-28 w-28 rounded-full bg-white/15 blur-2xl" />
+          <div className="pointer-events-none absolute right-20 -top-12 h-32 w-32 rounded-full bg-[#F2C300]/20 blur-3xl" />
+          <div className="relative pr-20">
+            <button onClick={() => router.back()} className="flex items-center gap-2 text-xs font-bold text-white/95">
+              <ChevronLeft size={14} /> Voltar
+            </button>
+            <div className="mt-4">
+              <p className="text-[9px] font-semibold uppercase tracking-wider text-white/85">Indicadores APS Brasil 360</p>
+              <h1 className="mt-1 text-lg font-extrabold">C7 — Cuidado da Mulher</h1>
+              <p className="mt-1 text-[10px] text-white/90">Prevenção do câncer, HPV e saúde sexual e reprodutiva</p>
+            </div>
+          </div>
+          <img src="/brasil360-logo-header.png" alt="Brasil 360" width={88} height={88} className="absolute right-5 top-1/2 h-16 w-16 -translate-y-1/2 rounded-2xl object-cover shadow-[0_8px_18px_rgba(0,59,142,0.22)] ring-1 ring-white/50 sm:h-20 sm:w-20" />
         </header>
         <section className="p-6">
           <div className="rounded-2xl bg-white p-8 text-center shadow-sm">
-            <Venus className="mx-auto text-[#8B5CF6]" />
+            <Venus className="mx-auto text-[#003B8E]" />
             <p className="mt-3 text-sm font-bold">Ainda não há dados para o C7</p>
             <p className="mt-1 text-xs text-gray-500">
               Importe o relatório temático Saúde da mulher do e-SUS PEC.
@@ -206,19 +214,40 @@ export default function C7Page() {
   const incompleto = dados.completo === false;
 
   return (
-    <main className="min-h-screen bg-[#F8F7FF] text-[#211A4A]">
-      <header className="bg-[#8B5CF6] px-6 py-4 text-white">
-        <button onClick={() => router.back()} className="flex items-center gap-1 text-xs">
-          <ChevronLeft size={14} /> Voltar
-        </button>
-        <p className="mt-3 text-[8px] font-bold uppercase">Indicadores APS Brasil 360</p>
-        <h1 className="text-lg font-extrabold">C7 — Cuidado da Mulher</h1>
-        <p className="text-[9px] text-white/80">
-          Prevenção do câncer, HPV e saúde sexual e reprodutiva
-        </p>
+    <main className="min-h-screen bg-[#F7FAFC] text-[#003B8E]">
+      <header className="relative isolate overflow-hidden rounded-b-[28px] border border-emerald-200/60 bg-gradient-to-br from-[#009C3B]/95 via-[#00A9E8]/85 to-[#F2C300]/85 px-5 py-5 text-white shadow-[0_10px_24px_rgba(0,156,59,0.16),0_4px_10px_rgba(0,59,142,0.10)] backdrop-blur-md">
+        <div className="pointer-events-none absolute -left-10 -top-14 h-28 w-28 rounded-full bg-white/15 blur-2xl" />
+        <div className="pointer-events-none absolute right-20 -top-12 h-32 w-32 rounded-full bg-[#F2C300]/20 blur-3xl" />
+
+        <div className="relative pr-20">
+          <button
+            onClick={() => router.back()}
+            className="flex items-center gap-2 text-xs font-bold text-white/95"
+          >
+            <ChevronLeft size={14} /> Voltar
+          </button>
+
+          <div className="mt-4">
+            <p className="text-[9px] font-semibold uppercase tracking-wider text-white/85">
+              Indicadores APS Brasil 360
+            </p>
+            <h1 className="mt-1 text-lg font-extrabold">C7 — Cuidado da Mulher</h1>
+            <p className="mt-1 text-[10px] text-white/90">
+              Prevenção do câncer, HPV e saúde sexual e reprodutiva
+            </p>
+          </div>
+        </div>
+
+        <img
+          src="/brasil360-logo-header.png"
+          alt="Brasil 360"
+          width={88}
+          height={88}
+          className="absolute right-5 top-1/2 h-16 w-16 -translate-y-1/2 rounded-2xl object-cover shadow-[0_8px_18px_rgba(0,59,142,0.22)] ring-1 ring-white/50 sm:h-20 sm:w-20"
+        />
       </header>
 
-      <section className="p-4 md:p-6">
+      <section className="p-4 pt-6 md:p-6">
         {incompleto && (
           <div className="mb-3 rounded-xl border border-[#FDE68A] bg-[#FFFBEB] px-4 py-3 text-xs text-[#92400E]">
             <strong>Cálculo preliminar:</strong> este relatório foi exportado de
@@ -227,31 +256,26 @@ export default function C7Page() {
           </div>
         )}
 
-        <section className="grid grid-cols-2 gap-3">
-          <div className="rounded-2xl bg-white p-5 shadow-sm">
-            <p className="text-[8px] text-gray-400">Resultado C7</p>
-            <p className="mt-1 text-3xl font-extrabold text-[#8B5CF6]">
+        <section className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div className="rounded-2xl border border-[#9EDFF2] bg-gradient-to-br from-[#EAF7FC] via-white to-[#D7F1FA] p-5 shadow-[0_6px_14px_rgba(0,169,232,0.12),0_2px_5px_rgba(0,0,0,0.05)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_10px_20px_rgba(0,169,232,0.18)]">
+            <p className="text-[8px] font-medium text-[#39708A]">Resultado C7</p>
+            <p className="mt-1 text-3xl font-extrabold text-[#003B8E]">
               {dados.pontuacao == null
                 ? `${formatarPercentual(dados.pontuacaoParcial)}*`
                 : formatarPercentual(dados.pontuacao)}
             </p>
-            <p className="text-[9px] font-semibold text-gray-500">
-              {dados.classificacao}
-            </p>
+            <p className="text-[9px] font-semibold text-[#003B8E]">{dados.classificacao}</p>
           </div>
-
-          <div className="rounded-2xl bg-white p-5 shadow-sm">
-            <p className="text-[8px] text-gray-400">Elegíveis</p>
-            <p className="mt-1 text-3xl font-extrabold text-[#8B5CF6]">
-              {dados.totalElegiveis}
-            </p>
-            <p className="text-[9px] text-gray-500">pessoas 9–69 anos</p>
+          <div className="rounded-2xl border border-[#A7E6C0] bg-gradient-to-br from-[#ECFDF3] via-white to-[#DDF7E7] p-5 shadow-[0_6px_14px_rgba(0,156,59,0.12),0_2px_5px_rgba(0,0,0,0.05)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_10px_20px_rgba(0,156,59,0.18)]">
+            <p className="text-[8px] font-medium text-[#39705A]">Elegíveis</p>
+            <p className="mt-1 text-3xl font-extrabold text-[#003B8E]">{dados.totalElegiveis}</p>
+            <p className="text-[9px] text-[#39705A]">pessoas 9–69 anos</p>
           </div>
         </section>
 
         <section className="mt-3 rounded-2xl bg-white p-4 shadow-sm">
           <div className="mb-3 flex items-center gap-2">
-            <Filter size={14} className="text-[#8B5CF6]" />
+            <Filter size={14} className="text-[#003B8E]" />
             <h2 className="text-[11px] font-bold">Boas práticas</h2>
           </div>
 
@@ -261,39 +285,40 @@ export default function C7Page() {
               if (!p) return null;
 
               return (
-                <div key={codigo} className="rounded-xl bg-[#F8F7FF] p-3">
-                  <div className="flex items-center justify-between">
-                    <p className="text-[9px] font-bold">
-                      {codigo} — {p.titulo}
-                    </p>
-                    <span className="text-[9px] font-bold text-[#8B5CF6]">
-                      {formatarPercentual(p.percentual)}
-                    </span>
+                <div key={codigo} className={`rounded-xl border p-3 shadow-[0_4px_10px_rgba(0,59,142,0.07)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_8px_16px_rgba(0,59,142,0.11)] ${
+                    codigo === "A" ? "border-[#9EDFF2] bg-gradient-to-br from-[#EAF7FC] to-[#D7F1FA]" :
+                    codigo === "B" ? "border-[#A7E6C0] bg-gradient-to-br from-[#ECFDF3] to-[#DDF7E7]" :
+                    codigo === "C" ? "border-[#F5D66A] bg-gradient-to-br from-[#FFF9E5] to-[#FFF1B8]" :
+                    "border-[#B7C8F5] bg-gradient-to-br from-[#EEF2FF] to-[#DDE7FF]"
+                  }`}>
+                    <div className="flex items-center justify-between">
+                      <p className="text-[9px] font-bold">{codigo} — {p.titulo}</p>
+                      <span className="text-[9px] font-bold text-[#003B8E]">{formatarPercentual(p.percentual)}</span>
+                    </div>
+                    <p className="mt-1 text-[7px] text-gray-500">{p.descricao}</p>
+                    <div className="mt-2 h-1.5 rounded-full bg-white/80">
+                      <div className={`h-1.5 rounded-full ${
+                        codigo === "A" ? "bg-[#00A9E8]" :
+                        codigo === "B" ? "bg-[#009C3B]" :
+                        codigo === "C" ? "bg-[#F2C300]" :
+                        "bg-[#003B8E]"
+                      }`} style={{ width: `${Math.min(p.percentual ?? 0, 100)}%` }} />
+                    </div>
+                    <p className="mt-1 text-[7px] text-gray-400">{p.atingidos}/{p.elegiveis} • {p.disponivel ? `${p.pontos?.toFixed(1)} pts` : "sem denominador"}</p>
                   </div>
-                  <p className="mt-1 text-[7px] text-gray-500">{p.descricao}</p>
-                  <div className="mt-2 h-1.5 rounded-full bg-gray-200">
-                    <div
-                      className="h-1.5 rounded-full bg-[#8B5CF6]"
-                      style={{ width: `${Math.min(p.percentual ?? 0, 100)}%` }}
-                    />
-                  </div>
-                  <p className="mt-1 text-[7px] text-gray-400">
-                    {p.atingidos}/{p.elegiveis} • {p.disponivel ? `${p.pontos?.toFixed(1)} pts` : "sem denominador"}
-                  </p>
-                </div>
-              );
-            })}
+                );
+              })}
           </div>
         </section>
 
         <section className="mt-3 rounded-2xl bg-white p-4 shadow-sm">
           <div className="flex items-center gap-2">
-            <Search size={14} className="text-[#8B5CF6]" />
+            <Search size={14} className="text-[#003B8E]" />
             <input
               value={busca}
               onChange={(e) => setBusca(e.target.value)}
               placeholder="Buscar nome ou CPF"
-              className="w-full rounded-lg border border-[#E5E0EC] px-3 py-2 text-xs outline-none focus:border-[#8B5CF6]"
+              className="w-full rounded-lg border border-[#DDEAF2] px-3 py-2 text-xs outline-none focus:border-[#00A9E8]"
             />
           </div>
 
@@ -301,7 +326,7 @@ export default function C7Page() {
             <select
               value={microarea}
               onChange={(e) => setMicroarea(e.target.value)}
-              className="rounded-lg border border-[#E5E0EC] px-3 py-2 text-[10px]"
+              className="rounded-lg border border-[#DDEAF2] px-3 py-2 text-[10px]"
             >
               <option>Todas</option>
               {microareas.map((m) => (
@@ -312,7 +337,7 @@ export default function C7Page() {
             <select
               value={pratica}
               onChange={(e) => setPratica(e.target.value)}
-              className="rounded-lg border border-[#E5E0EC] px-3 py-2 text-[10px]"
+              className="rounded-lg border border-[#DDEAF2] px-3 py-2 text-[10px]"
             >
               <option>Todas</option>
               <option value="A">A — Colo do útero</option>
@@ -342,7 +367,7 @@ export default function C7Page() {
                   </div>
                   <ChevronDown
                     size={14}
-                    className={`text-[#8B5CF6] transition ${expandido ? "rotate-180" : ""}`}
+                    className={`text-[#003B8E] transition ${expandido ? "rotate-180" : ""}`}
                   />
                 </button>
 
@@ -350,7 +375,7 @@ export default function C7Page() {
                   <div className="border-t border-gray-100 px-4 py-3">
                     <div className="grid grid-cols-2 gap-2">
                       {(["A", "B", "C", "D"] as const).map((codigo) => (
-                        <div key={codigo} className="rounded-lg bg-[#F8F7FF] p-2">
+                        <div key={codigo} className="rounded-lg bg-[#F7FAFC] p-2">
                           <div className="flex items-center justify-between">
                             <span className="text-[8px] font-bold">{codigo}</span>
                             <span className={`text-[8px] font-bold ${paciente.praticas[codigo] ? "text-emerald-600" : "text-red-500"}`}>

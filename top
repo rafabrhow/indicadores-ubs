@@ -1,0 +1,43 @@
+warning: in the working copy of 'app/acs/page.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'app/api/auth/acs-login/route.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'app/config/page.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'app/dashboard/page.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'app/equipe/acs/[uid]/paciente/[pacienteId]/page.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'app/equipe/acs/[uid]/page.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'app/equipe/page.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'app/globals.css', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'app/historico/page.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'app/indicadores/bucal/page.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'app/indicadores/c1/page.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'app/indicadores/c2/page.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'app/indicadores/c3/page.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'app/indicadores/c4/page.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'app/indicadores/c5/page.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'app/indicadores/c6/page.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'app/indicadores/c7/page.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'app/layout.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'app/login/page.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'app/pacientes/[id]/page.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'app/pacientes/page.tsx', LF will be replaced by CRLF the next time Git touches it
+ app/acs/page.tsx                                   |  79 [32m++++[m[31m---[m
+ app/api/auth/acs-login/route.ts                    |   8 [32m+[m
+ app/config/page.tsx                                |  55 [32m+++[m[31m--[m
+ app/dashboard/page.tsx                             | 216 [32m+++++++++[m[31m----------[m
+ .../acs/[uid]/paciente/[pacienteId]/page.tsx       | 107 [32m+++++[m[31m-----[m
+ app/equipe/acs/[uid]/page.tsx                      | 116 [32m++++++++[m[31m---[m
+ app/equipe/page.tsx                                | 232 [32m+++++++++++++++++[m[31m----[m
+ app/globals.css                                    | 222 [32m++++++++++++[m[31m--------[m
+ app/historico/page.tsx                             | 225 [32m++++++++++[m[31m----------[m
+ app/indicadores/bucal/page.tsx                     |  34 [32m++[m[31m-[m
+ app/indicadores/c1/page.tsx                        | 119 [32m++++++[m[31m-----[m
+ app/indicadores/c2/page.tsx                        |  74 [32m++++++[m[31m-[m
+ app/indicadores/c3/page.tsx                        |  68 [32m+++++[m[31m-[m
+ app/indicadores/c4/page.tsx                        | 139 [32m++++++++[m[31m----[m
+ app/indicadores/c5/page.tsx                        | 155 [32m+++++++[m[31m-------[m
+ app/indicadores/c6/page.tsx                        | 114 [32m+++++[m[31m-----[m
+ app/indicadores/c7/page.tsx                        | 153 [32m++++++++[m[31m------[m
+ app/layout.tsx                                     |  46 [32m+++[m[31m-[m
+ app/login/page.tsx                                 |  21 [32m+[m[31m-[m
+ app/pacientes/[id]/page.tsx                        | 149 [32m++++++[m[31m-------[m
+ app/pacientes/page.tsx                             | 147 [32m++++++++[m[31m-----[m
+ 21 files changed, 1550 insertions(+), 929 deletions(-)

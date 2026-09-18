@@ -17,6 +17,7 @@ import { doc, getDoc } from "firebase/firestore";
 
 import { auth } from "@/lib/firebase";
 import { db } from "@/lib/firestore";
+import LoadingBrasil360 from "@/components/ui/LoadingBrasil360";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -140,6 +141,15 @@ export default function LoginPage() {
     }
   }
 
+  if (carregando) {
+    return (
+      <LoadingBrasil360
+        mensagem="Entrando no sistema..."
+        subtitulo="Autenticando seu acesso"
+      />
+    );
+  }
+
   return (
     <main className="min-h-screen bg-[#F8F7FF] px-6 py-8">
       <div className="mx-auto flex min-h-[calc(100vh-4rem)] max-w-[1100px] items-center justify-center">
@@ -173,7 +183,7 @@ export default function LoginPage() {
             </div>
 
             <p className="text-sm text-white/70">
-              Acesso seguro para profissionais autorizados. v1.5
+              Acesso seguro para profissionais autorizados. V2
             </p>
           </div>
 
@@ -249,14 +259,7 @@ export default function LoginPage() {
                 disabled={carregando}
                 className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#7C3AED] px-4 py-3.5 font-semibold text-white transition hover:bg-[#6D28D9] disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {carregando ? (
-                  <>
-                    <Loader2 size={20} className="animate-spin" />
-                    Entrando...
-                  </>
-                ) : (
-                  "Entrar"
-                )}
+                Entrar
               </button>
 
             </form>

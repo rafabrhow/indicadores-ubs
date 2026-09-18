@@ -160,11 +160,41 @@ export default function BucalPage() {
 
   if (erro) return <main className="min-h-screen bg-[#F8F7FF] p-6 text-[#211A4A]"><button onClick={() => router.back()} className="mb-5 flex items-center gap-1 text-xs font-semibold text-[#7C3AED]"><ChevronLeft size={15}/> Voltar</button><section className="rounded-2xl bg-white p-8 text-center shadow-sm"><p className="font-bold">Não foi possível carregar Saúde Bucal</p><p className="mt-2 text-xs text-gray-500">{erro}</p></section></main>;
 
-  if (!dados?.possuiDados) return <main className="min-h-screen bg-[#F8F7FF] text-[#211A4A]"><header className="bg-gradient-to-r from-[#059669] via-[#10B981] to-[#14B8A6] px-6 py-4 text-white shadow-md"><button onClick={() => router.back()} className="flex items-center gap-1 text-xs"><ChevronLeft size={14}/> Voltar</button><p className="mt-3 text-[8px] font-bold uppercase">Indicadores APS Brasil 360</p><h1 className="text-lg font-extrabold">Saúde Bucal</h1></header><section className="p-6"><div className="rounded-2xl bg-white p-8 text-center shadow-sm"><Smile className="mx-auto text-[#10B981]"/><p className="mt-3 text-sm font-bold">Ainda não há dados de Saúde Bucal</p><p className="mt-1 text-xs text-gray-500">Importe o relatório temático Saúde bucal do e-SUS PEC.</p></div></section></main>;
+  if (!dados?.possuiDados) return <main className="min-h-screen bg-[#F8F7FF] text-[#211A4A]"><header className="relative isolate overflow-hidden rounded-b-[28px] border border-emerald-200/60 bg-gradient-to-br from-[#009C3B]/95 via-[#00A9E8]/85 to-[#F2C300]/85 px-5 py-5 text-white shadow-[0_10px_24px_rgba(0,156,59,0.16),0_4px_10px_rgba(0,59,142,0.10)] backdrop-blur-md"><div className="pointer-events-none absolute -left-10 -top-14 h-28 w-28 rounded-full bg-white/15 blur-2xl" /><div className="pointer-events-none absolute right-20 -top-12 h-32 w-32 rounded-full bg-[#F2C300]/20 blur-3xl" /><div className="relative pr-20"><button onClick={() => router.back()} className="flex items-center gap-2 text-xs font-bold text-white/95"><ChevronLeft size={14}/> Voltar</button><div className="mt-4"><p className="text-[9px] font-semibold uppercase tracking-wider text-white/85">Indicadores APS Brasil 360</p><h1 className="mt-1 text-lg font-extrabold">Saúde Bucal</h1></div></div><img src="/brasil360-logo-header.png" alt="Brasil 360" width={88} height={88} className="absolute right-5 top-1/2 h-16 w-16 -translate-y-1/2 rounded-2xl object-cover shadow-[0_8px_18px_rgba(0,59,142,0.22)] ring-1 ring-white/50 sm:h-20 sm:w-20" /></header><section className="p-6"><div className="rounded-2xl bg-white p-8 text-center shadow-sm"><Smile className="mx-auto text-[#10B981]"/><p className="mt-3 text-sm font-bold">Ainda não há dados de Saúde Bucal</p><p className="mt-1 text-xs text-gray-500">Importe o relatório temático Saúde bucal do e-SUS PEC.</p></div></section></main>;
 
   const praticas = dados.praticas!;
   return <main className="min-h-screen bg-[#F8F7FF] text-[#211A4A]">
-    <header className="bg-gradient-to-r from-[#059669] via-[#10B981] to-[#14B8A6] px-6 py-4 text-white shadow-md"><button onClick={() => router.back()} className="flex items-center gap-1 text-xs"><ChevronLeft size={14}/> Voltar</button><p className="mt-3 text-[8px] font-bold uppercase">Indicadores APS Brasil 360</p><h1 className="text-lg font-extrabold">Saúde Bucal</h1><p className="text-[9px] text-white/80">Acompanhamento dos indicadores B1 a B6</p></header>
+    <header className="relative isolate overflow-hidden rounded-b-[28px] border border-emerald-200/60 bg-gradient-to-br from-[#009C3B]/95 via-[#00A9E8]/85 to-[#F2C300]/85 px-5 py-5 text-white shadow-[0_10px_24px_rgba(0,156,59,0.16),0_4px_10px_rgba(0,59,142,0.10)] backdrop-blur-md">
+      <div className="pointer-events-none absolute -left-10 -top-14 h-28 w-28 rounded-full bg-white/15 blur-2xl" />
+      <div className="pointer-events-none absolute right-20 -top-12 h-32 w-32 rounded-full bg-[#F2C300]/20 blur-3xl" />
+
+      <div className="relative pr-20">
+        <button
+          onClick={() => router.back()}
+          className="flex items-center gap-2 text-xs font-bold text-white/95"
+        >
+          <ChevronLeft size={14} /> Voltar
+        </button>
+
+        <div className="mt-4">
+          <p className="text-[9px] font-semibold uppercase tracking-wider text-white/85">
+            Indicadores APS Brasil 360
+          </p>
+          <h1 className="mt-1 text-lg font-extrabold">Saúde Bucal</h1>
+          <p className="mt-1 text-[10px] text-white/90">
+            Acompanhamento dos indicadores B1 a B6
+          </p>
+        </div>
+      </div>
+
+      <img
+        src="/brasil360-logo-header.png"
+        alt="Brasil 360"
+        width={88}
+        height={88}
+        className="absolute right-5 top-1/2 h-16 w-16 -translate-y-1/2 rounded-2xl object-cover shadow-[0_8px_18px_rgba(0,59,142,0.22)] ring-1 ring-white/50 sm:h-20 sm:w-20"
+      />
+    </header>
     <section className="p-4 md:p-6">
       <section className="grid grid-cols-2 gap-3 md:grid-cols-3">
         {codigos.map((codigo) => { const p = praticas[codigo]; return <div key={codigo} className={`group rounded-2xl border bg-gradient-to-br p-4 shadow-sm transition-all duration-200 hover:-translate-y-1 hover:shadow-lg ${estiloCard(codigo)}`}><div className="flex items-center justify-between"><span className="rounded-lg bg-white/80 px-2 py-1 text-[9px] font-extrabold shadow-sm">{codigo}</span><span className={`text-sm font-extrabold ${cor(p.status,p.percentual)}`}>{pct(p.percentual)}</span></div><p className="mt-2 text-[10px] font-bold">{p.titulo}</p><p className="mt-2 text-[8px] text-gray-500">{p.numerador}{p.denominador != null ? ` de ${p.denominador}` : " registros"}</p><span className={`mt-2 inline-block rounded-full px-2 py-1 text-[7px] font-bold ${p.status === "Disponível" ? "bg-emerald-100 text-emerald-700" : "bg-gray-100 text-gray-600"}`}>{p.status}</span></div> })}

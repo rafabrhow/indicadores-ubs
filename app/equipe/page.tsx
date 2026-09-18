@@ -15,16 +15,54 @@ import {
   UserRound,
   X,
   ChevronRight,
+  HeartPulse,
 } from "lucide-react";
 
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { useEffect, useState } from "react";
 
-import { collection, getDocs, getFirestore } from "firebase/firestore";
+import {
+  collection,
+  getCountFromServer,
+  getDocs,
+  getFirestore,
+  query,
+  where,
+} from "firebase/firestore";
 
 import { useAuth } from "@/context/AuthContext";
 import ModalCadastrarACS, { type ACSCadastrado } from "@/components/acs/ModalCadastrarACS";
-import "@/lib/firebase";
+import { auth } from "@/lib/firebase";
+
+function formatarUltimoAcesso(valor: unknown): string | undefined {
+  if (!valor) return undefined;
+
+  let data: Date | null = null;
+
+  if (valor instanceof Date) {
+    data = valor;
+  } else if (
+    typeof valor === "object" &&
+    valor !== null &&
+    "toDate" in valor &&
+    typeof (valor as { toDate?: unknown }).toDate === "function"
+  ) {
+    data = (valor as { toDate: () => Date }).toDate();
+  } else if (typeof valor === "string") {
+    const convertida = new Date(valor);
+    if (!Number.isNaN(convertida.getTime())) {
+      data = convertida;
+    }
+  }
+
+  if (!data || Number.isNaN(data.getTime())) return undefined;
+
+  return data.toLocaleString("pt-BR", {
+    dateStyle: "short",
+    timeStyle: "short",
+  });
+}
 
 export default function EquipePage() {
   const router = useRouter();
@@ -63,6 +101,12 @@ export default function EquipePage() {
   const [acs, setAcs] = useState<ACS[]>([]);
   const [carregandoACS, setCarregandoACS] = useState(false);
   const [acsSelecionado, setAcsSelecionado] = useState<ACS | null>(null);
+  const [resumoMicroarea, setResumoMicroarea] = useState<{
+    atencao: number;
+    emDia: number;
+  } | null>(null);
+  const [carregandoResumoMicroarea, setCarregandoResumoMicroarea] =
+    useState(false);
 
   // Busca os ACS diretamente na coleção da UBS.
   // O ubsId é extraído antes da função assíncrona para que o TypeScript
@@ -101,7 +145,7 @@ export default function EquipePage() {
           return;
         }
 
-        const lista: ACS[] = snapshot.docs.map((doc) => {
+        const listaBase: ACS[] = snapshot.docs.map((doc) => {
           const dados = doc.data();
 
           return {
@@ -123,16 +167,39 @@ export default function EquipePage() {
               typeof dados.codigoAcesso === "string"
                 ? dados.codigoAcesso
                 : undefined,
-            ultimoAcesso:
-              typeof dados.ultimoAcesso === "string"
-                ? dados.ultimoAcesso
-                : undefined,
+            ultimoAcesso: formatarUltimoAcesso(dados.ultimoAcesso),
             quantidadePacientes:
               typeof dados.quantidadePacientes === "number"
                 ? dados.quantidadePacientes
                 : undefined,
           };
         });
+
+        // A quantidade de pacientes é calculada pela microárea real
+        // vinculada a cada ACS. O count evita baixar toda a coleção de pacientes.
+        const lista = await Promise.all(
+          listaBase.map(async (item) => {
+            if (!item.microareaId) {
+              return { ...item, quantidadePacientes: 0 };
+            }
+
+            const pacientesQuery = query(
+              collection(db, "ubs", ubsId, "pacientes"),
+              where("microareaId", "==", item.microareaId),
+            );
+
+            const contador = await getCountFromServer(pacientesQuery);
+
+            return {
+              ...item,
+              quantidadePacientes: contador.data().count,
+            };
+          }),
+        );
+
+        if (cancelado) {
+          return;
+        }
 
         setAcs(lista);
       } catch (error) {
@@ -223,6 +290,42 @@ export default function EquipePage() {
     return null;
   }
 
+  async function abrirDetalhesACS(item: ACS) {
+    setAcsSelecionado(item);
+    setResumoMicroarea(null);
+
+    if (!item.uid) return;
+
+    const usuarioFirebase = auth.currentUser;
+    if (!usuarioFirebase) return;
+
+    try {
+      setCarregandoResumoMicroarea(true);
+
+      const token = await usuarioFirebase.getIdToken();
+      const resposta = await fetch(
+        `/api/acs/operacional/${encodeURIComponent(item.uid)}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+          cache: "no-store",
+        },
+      );
+
+      const dados = await resposta.json();
+
+      if (!resposta.ok || !dados.sucesso) return;
+
+      setResumoMicroarea({
+        atencao: Number(dados.resumo?.atencao ?? 0),
+        emDia: Number(dados.resumo?.emDia ?? 0),
+      });
+    } catch (error) {
+      console.error("Erro ao carregar resumo da microárea:", error);
+    } finally {
+      setCarregandoResumoMicroarea(false);
+    }
+  }
+
   // ============================================================
   // COPIAR CÓDIGO DA EQUIPE
   // ============================================================
@@ -272,25 +375,31 @@ export default function EquipePage() {
 
         <aside className="hidden w-[150px] shrink-0 flex-col border-r border-[#E7E2F2] bg-white lg:flex">
 
-          {/* Logo */}
-          <div className="border-b border-[#E7E2F2] px-4 py-5">
+          {/* Logo Brasil 360 */}
+          <div className="border-b border-[#DCE8F5] px-4 py-5">
 
             <div className="flex items-center gap-2">
 
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#7C3AED]">
-                <ShieldCheck
-                  size={17}
-                  className="text-white"
-                />
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#003B8E] shadow-sm">
+                 <img
+                src="/brasil360-logo-header.png"
+                alt="Brasil 360"
+                className="h-14 w-[88px] object-contain"
+              />
               </div>
 
-              <span className="text-[11px] font-bold text-[#4C1D95]">
-                Indicadores
-              </span>
+              <div className="min-w-0">
+                <p className="text-[11px] font-black tracking-tight text-[#003B8E]">
+                  BR<span className="text-[#00A9E8]">3</span><span className="text-[#009C3B]">6</span><span className="text-[#F2C300]">0</span>
+                </p>
+                <p className="text-[7px] font-semibold uppercase tracking-wide text-[#003B8E]">
+                  Indicadores
+                </p>
+              </div>
 
             </div>
 
-            <p className="mt-4 text-[8px] font-bold uppercase tracking-wide text-[#7C3AED]">
+            <p className="mt-4 text-[8px] font-bold uppercase tracking-wide text-[#003B8E]">
               Enfermeira Gestora
             </p>
 
@@ -381,23 +490,35 @@ export default function EquipePage() {
 
         <section className="min-w-0 flex-1 pb-20 lg:pb-0">
 
-          {/* Cabeçalho roxo */}
-          <header className="rounded-b-[24px] bg-gradient-to-r from-[#7C3AED] to-[#5B21B6] px-8 py-6 text-white">
+          {/* Cabeçalho Brasil 360 */}
+          <header>
+            <div className="relative isolate overflow-hidden rounded-b-[28px] border border-emerald-200/60 bg-gradient-to-br from-[#009C3B]/95 via-[#00A9E8]/85 to-[#F2C300]/85 px-8 py-6 text-white shadow-[0_12px_30px_rgba(0,156,59,0.18),0_5px_12px_rgba(0,59,142,0.12)] backdrop-blur-md">
+              <div className="pointer-events-none absolute -left-10 -top-14 h-32 w-32 rounded-full bg-white/20 blur-2xl" />
+              <div className="pointer-events-none absolute right-8 -top-16 h-40 w-40 rounded-full bg-[#F2C300]/25 blur-3xl" />
+              <div className="pointer-events-none absolute bottom-[-70px] left-1/2 h-40 w-64 -translate-x-1/2 rounded-full bg-[#00A9E8]/20 blur-3xl" />
 
-            <p className="text-[11px] font-medium text-white/75">
-              Enfermeira Gestora
-            </p>
+              <div className="relative">
+                <p className="text-[11px] font-semibold text-white/85">
+                  Enfermeira Gestora
+                </p>
 
-            <h1 className="mt-1 text-2xl font-bold">
-              Minha Equipe
-            </h1>
+                <h1 className="mt-1 text-2xl font-bold tracking-tight drop-shadow-sm">
+                  Minha Equipe
+                </h1>
 
-            <p className="mt-1 text-[10px] text-white/80">
-              {ubs?.nome || "UBS"} —{" "}
-              {ubs?.municipio || ""}{" "}
-              {ubs?.uf ? `• ${ubs.uf}` : ""}
-            </p>
+                <p className="mt-1 text-[10px] text-white/90">
+                  {ubs?.nome || "UBS"} • {ubs?.municipio || ""} {ubs?.uf ? `• ${ubs.uf}` : ""}
+                </p>
+              </div>
 
+                <img
+                  src="/brasil360-logo-header.png"
+                  alt="Brasil 360"
+                  width={88}
+                  height={88}
+                  className="absolute right-5 top-1/2 h-16 w-16 -translate-y-1/2 rounded-2xl object-cover shadow-[0_8px_18px_rgba(0,59,142,0.22)] ring-1 ring-white/50 sm:h-20 sm:w-20"
+                />
+            </div>
           </header>
 
           <div className="px-7 py-7">
@@ -546,7 +667,7 @@ export default function EquipePage() {
                     <button
                       key={item.id}
                       type="button"
-                      onClick={() => setAcsSelecionado(item)}
+                      onClick={() => abrirDetalhesACS(item)}
                       className="flex w-full items-center justify-between rounded-xl border border-[#E7E2F2] bg-[#FAF9FD] p-3 text-left transition hover:-translate-y-0.5 hover:border-[#C4B5FD] hover:bg-white hover:shadow-sm"
                     >
 
@@ -714,7 +835,7 @@ export default function EquipePage() {
 
               <button
                 type="button"
-                onClick={() => setAcsSelecionado(null)}
+                onClick={() => { setAcsSelecionado(null); setResumoMicroarea(null); }}
                 className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-gray-400 transition hover:bg-gray-100 hover:text-gray-600"
                 aria-label="Fechar detalhes"
               >
@@ -768,22 +889,47 @@ export default function EquipePage() {
               </div>
             </div>
 
-            <div className="mt-4 rounded-2xl border border-[#E7E2F2] bg-[#FAF9FD] p-4">
-              <p className="text-[9px] font-semibold uppercase tracking-wide text-[#7C3AED]">
-                Indicadores da microárea
-              </p>
+            <div className="mt-4 rounded-2xl border border-[#DCE8F5] bg-[#F7FBFF] p-4">
+              <div className="flex items-center gap-3">
+                <div className="min-w-0 flex-1">
+                  <p className="text-[9px] font-semibold uppercase tracking-wide text-[#003B8E]">
+                    Resumo da microárea
+                  </p>
+                  <p className="mt-1 text-xs text-gray-500">
+                    Situação atual dos pacientes vinculados a esta microárea.
+                  </p>
+                </div>
 
-              <p className="mt-2 text-xs leading-relaxed text-gray-500">
-                O acompanhamento das pendências por microárea será
-                conectado à área operacional do ACS na próxima etapa.
-                Os dados atuais do cadastro continuam preservados.
-              </p>
+                {carregandoResumoMicroarea ? (
+                  <Loader2 size={18} className="animate-spin text-[#003B8E]" />
+                ) : (
+                  <div className="grid shrink-0 grid-cols-2 gap-2 text-center">
+                    <div className="w-12 shrink-0 rounded-xl bg-white px-1.5 py-2 shadow-sm ring-1 ring-green-100 sm:w-14">
+                      <p className="text-[8px] font-semibold uppercase tracking-wide text-green-600">
+                        Em dia
+                      </p>
+                      <p className="mt-0.5 text-lg font-bold text-green-700">
+                        {resumoMicroarea?.emDia ?? "—"}
+                      </p>
+                    </div>
+
+                    <div className="w-12 shrink-0 rounded-xl bg-white px-1.5 py-2 shadow-sm ring-1 ring-amber-100 sm:w-14">
+                      <p className="text-[8px] font-semibold uppercase tracking-wide text-amber-600">
+                        Atenção
+                      </p>
+                      <p className="mt-0.5 text-lg font-bold text-amber-700">
+                        {resumoMicroarea?.atencao ?? "—"}
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
 
             <div className="mt-5 flex gap-3">
               <button
                 type="button"
-                onClick={() => setAcsSelecionado(null)}
+                onClick={() => { setAcsSelecionado(null); setResumoMicroarea(null); }}
                 className="flex-1 rounded-xl border border-gray-200 px-4 py-3 text-sm font-semibold text-gray-600 transition hover:bg-gray-50"
               >
                 Fechar

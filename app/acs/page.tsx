@@ -195,10 +195,10 @@ export default function ACSPage() {
 
   if (carregando || carregandoDados) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-[#F8F7FF]">
+      <main className="flex min-h-screen items-center justify-center bg-[#F7FAFC]">
         <div className="text-center">
-          <Loader2 size={36} className="mx-auto animate-spin text-[#7C3AED]" />
-          <p className="mt-3 text-sm font-semibold text-[#4C1D95]">
+          <Loader2 size={36} className="mx-auto animate-spin text-[#00A9E8]" />
+          <p className="mt-3 text-sm font-semibold text-[#003B8E]">
             Carregando sua área...
           </p>
         </div>
@@ -212,7 +212,7 @@ export default function ACSPage() {
 
   if (erro) {
     return (
-      <main className="min-h-screen bg-[#F8F7FF] px-5 py-8 text-[#211A4A]">
+      <main className="min-h-screen bg-[#F7FAFC] px-5 py-8 text-[#211A4A]">
         <div className="mx-auto max-w-2xl rounded-3xl bg-white p-6 text-center shadow-sm">
           <AlertCircle size={32} className="mx-auto text-red-500" />
           <h1 className="mt-4 text-lg font-bold">Não foi possível abrir sua área</h1>
@@ -220,7 +220,7 @@ export default function ACSPage() {
           <button
             type="button"
             onClick={() => window.location.reload()}
-            className="mt-5 rounded-2xl bg-[#7C3AED] px-5 py-3 text-sm font-bold text-white"
+            className="mt-5 rounded-2xl bg-[#00A9E8] px-5 py-3 text-sm font-bold text-white"
           >
             Tentar novamente
           </button>
@@ -232,18 +232,25 @@ export default function ACSPage() {
   if (!dados) return null;
 
   return (
-    <main className="min-h-screen bg-[#F8F7FF] text-[#211A4A]">
-      <header data-tour="tour-acs-cabecalho" className="rounded-b-[28px] bg-gradient-to-br from-[#7C3AED] to-[#4C1D95] px-5 pb-7 pt-7 text-white">
-        <div className="mx-auto w-full max-w-3xl">
+    <main className="min-h-screen bg-[#F7FAFC] text-[#003B8E]">
+      <header
+        data-tour="tour-acs-cabecalho"
+        className="relative isolate overflow-hidden rounded-b-[28px] border border-emerald-200/60 bg-gradient-to-br from-[#009C3B]/95 via-[#00A9E8]/85 to-[#F2C300]/85 px-5 pb-7 pt-5 text-white shadow-[0_10px_24px_rgba(0,156,59,0.16),0_4px_10px_rgba(0,59,142,0.10)] backdrop-blur-md"
+      >
+        <div className="pointer-events-none absolute -left-10 -top-14 h-28 w-28 rounded-full bg-white/15 blur-2xl" />
+        <div className="pointer-events-none absolute right-10 -top-12 h-32 w-32 rounded-full bg-[#F2C300]/20 blur-3xl" />
+        <div className="pointer-events-none absolute bottom-[-45px] left-1/2 h-24 w-48 -translate-x-1/2 rounded-full bg-white/10 blur-3xl" />
+
+        <div className="relative mx-auto w-full max-w-3xl">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/15">
+              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/15 shadow-sm ring-1 ring-white/25">
                 <ShieldCheck size={23} />
               </div>
 
               <div>
-                <p className="text-xs font-medium text-purple-100">Área do ACS</p>
-                <h1 className="text-xl font-bold">{dados.acs.nome}</h1>
+                <p className="text-[9px] font-semibold uppercase tracking-wider text-white/85">Área do ACS</p>
+                <h1 className="text-xl font-extrabold">{dados.acs.nome}</h1>
               </div>
             </div>
 
@@ -251,24 +258,24 @@ export default function ACSPage() {
               data-tour="tour-acs-sair"
               type="button"
               onClick={sair}
-              className="rounded-xl bg-white/10 p-3 transition hover:bg-white/20"
+              className="rounded-xl bg-white/15 p-3 shadow-sm ring-1 ring-white/25 transition-all hover:-translate-y-0.5 hover:bg-white/25 hover:shadow-md"
               aria-label="Sair"
             >
               <LogOut size={20} />
             </button>
           </div>
 
-          <div className="mt-6 rounded-2xl bg-white/10 px-4 py-3">
-            <p className="text-xs text-purple-100">Unidade</p>
+          <div className="relative mt-6 overflow-hidden rounded-2xl border border-white/20 bg-white/15 px-4 py-3 shadow-[0_6px_14px_rgba(0,59,142,0.10)] backdrop-blur-sm">
+            <p className="text-[10px] font-semibold text-white/85">Unidade</p>
             <p className="mt-1 font-semibold">{ubs?.nome || "UBS"}</p>
           </div>
         </div>
       </header>
 
       <section className="mx-auto w-full max-w-3xl px-5 py-6">
-        <div data-tour="tour-acs-microarea" className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-gray-100">
+        <div data-tour="tour-acs-microarea" className="rounded-3xl border border-[#9EDFF2] bg-gradient-to-br from-[#F8FCFF] via-white to-[#EAF7FC] p-5 shadow-[0_8px_18px_rgba(0,169,232,0.10),0_3px_7px_rgba(0,59,142,0.06)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_12px_24px_rgba(0,169,232,0.14)]">
           <div className="flex items-start gap-4">
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-purple-50 text-[#7C3AED]">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#E5F5FB] text-[#00A9E8] shadow-sm ring-1 ring-[#9EDFF2]">
               <MapPin size={23} />
             </div>
 
@@ -303,7 +310,7 @@ export default function ACSPage() {
           />
         </div>
 
-        <section data-tour="tour-acs-pacientes" className="mt-4 rounded-2xl border border-[#E7E2F2] bg-white p-4 shadow-sm">
+        <section data-tour="tour-acs-pacientes" className="mt-4 rounded-2xl border border-[#B8DFF0] bg-gradient-to-br from-white via-[#F8FCFF] to-[#EFF9FD] p-4 shadow-[0_7px_16px_rgba(0,59,142,0.07),0_2px_5px_rgba(0,169,232,0.05)] transition-all duration-200 hover:shadow-[0_10px_20px_rgba(0,169,232,0.10)]">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h2 className="text-sm font-bold">Pacientes da microárea</h2>
@@ -365,7 +372,7 @@ export default function ACSPage() {
                       `/equipe/acs/${encodeURIComponent(dados.acs.uid)}/paciente/${encodeURIComponent(paciente.id)}`
                     )
                   }
-                  className="w-full rounded-2xl border border-[#E7E2F2] bg-[#FAF9FD] p-3 text-left transition hover:border-purple-200 hover:bg-purple-50/40"
+                  className="group w-full rounded-2xl border border-[#DDEAF2] bg-gradient-to-br from-white to-[#F7FBFD] p-3 text-left shadow-[0_4px_10px_rgba(0,59,142,0.05)] transition-all duration-200 hover:-translate-y-0.5 hover:border-[#9EDFF2] hover:shadow-[0_9px_18px_rgba(0,169,232,0.12)]"
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
@@ -385,17 +392,17 @@ export default function ACSPage() {
                       <span
                         className={`rounded-full px-2.5 py-1 text-[8px] font-bold ${
                           paciente.situacao === "Atenção"
-                            ? "bg-red-100 text-red-600"
-                            : "bg-green-100 text-green-700"
+                            ? "bg-[#FEE2E2] text-[#DC2626]"
+                            : "bg-[#D9F6E5] text-[#009C3B]"
                         }`}
                       >
                         {paciente.situacao}
                       </span>
-                      <ChevronRight size={15} className="text-[#7C3AED]" />
+                      <ChevronRight size={15} className="text-[#00A9E8] transition-transform duration-200 group-hover:translate-x-0.5" />
                     </div>
                   </div>
 
-                  <p className="mt-2 text-[9px] font-semibold text-[#7C3AED]">
+                  <p className="mt-2 text-[9px] font-semibold text-[#00A9E8]">
                     Ver ficha →
                   </p>
                 </button>
@@ -404,8 +411,8 @@ export default function ACSPage() {
           )}
         </section>
 
-        <div className="mt-4 flex items-center gap-3 rounded-2xl bg-[#F3F0FA] px-4 py-3">
-          <ShieldCheck size={18} className="shrink-0 text-[#7C3AED]" />
+        <div className="mt-4 flex items-center gap-3 rounded-2xl border border-[#C9E8F5] bg-gradient-to-r from-[#EFF9FD] to-[#F6FBFE] px-4 py-3 shadow-[0_4px_10px_rgba(0,169,232,0.06)]">
+          <ShieldCheck size={18} className="shrink-0 text-[#00A9E8]" />
           <p className="text-[9px] leading-relaxed text-gray-500">
             O ACS visualiza somente os pacientes autorizados para sua
             microárea. A validação também ocorre no servidor.
@@ -431,13 +438,29 @@ function Resumo({
   label: string;
   icon: React.ReactNode;
 }) {
+  const estilo =
+    label === "Pacientes"
+      ? {
+          card: "border-[#9EDFF2] bg-gradient-to-br from-[#EAF7FC] via-white to-[#D7F1FA] shadow-[0_6px_14px_rgba(0,169,232,0.12),0_2px_5px_rgba(0,0,0,0.05)] hover:shadow-[0_10px_20px_rgba(0,169,232,0.18)]",
+          icon: "text-[#00A9E8]",
+        }
+      : label === "Em atenção"
+        ? {
+            card: "border-[#F5D66A] bg-gradient-to-br from-[#FFF9E5] via-white to-[#FFF1B8] shadow-[0_6px_14px_rgba(242,195,0,0.12),0_2px_5px_rgba(0,0,0,0.05)] hover:shadow-[0_10px_20px_rgba(242,195,0,0.18)]",
+            icon: "text-[#C78A00]",
+          }
+        : {
+            card: "border-[#A7E6C0] bg-gradient-to-br from-[#ECFDF3] via-white to-[#DDF7E7] shadow-[0_6px_14px_rgba(0,156,59,0.12),0_2px_5px_rgba(0,0,0,0.05)] hover:shadow-[0_10px_20px_rgba(0,156,59,0.18)]",
+            icon: "text-[#009C3B]",
+          };
+
   return (
-    <div className="rounded-2xl border border-[#E7E2F2] bg-white p-4 shadow-sm">
-      <div className="flex items-center gap-2 text-[#7C3AED]">
+    <div className={`group rounded-2xl border p-4 shadow-sm transition-all duration-200 hover:-translate-y-1 ${estilo.card}`}>
+      <div className={`flex items-center gap-2 ${estilo.icon}`}>
         {icon}
         <span className="text-[9px] font-semibold uppercase">{label}</span>
       </div>
-      <p className="mt-3 text-2xl font-bold">{valor}</p>
+      <p className="mt-3 text-2xl font-extrabold text-[#003B8E]">{valor}</p>
     </div>
   );
 }
@@ -456,7 +479,7 @@ function Filtro({
       type="button"
       onClick={onClick}
       className={`shrink-0 rounded-full px-3 py-2 text-[9px] font-semibold ${
-        ativo ? "bg-[#7C3AED] text-white" : "bg-gray-100 text-gray-500"
+        ativo ? "bg-[#00A9E8] text-white shadow-[0_4px_10px_rgba(0,169,232,0.20)]" : "bg-[#EEF5F9] text-[#64748B]"
       }`}
     >
       {children}

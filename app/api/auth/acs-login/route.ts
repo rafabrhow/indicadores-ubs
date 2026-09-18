@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { FieldValue } from "firebase-admin/firestore";
 import { adminAuth, adminDb } from "@/lib/firebase-admin";
 import { verificarSenha } from "@/lib/seguranca";
 
@@ -79,6 +80,13 @@ export async function POST(request: Request) {
     }
 
     const primeiroAcesso = acs.primeiroAcesso === true;
+
+    // Registra o último acesso real do ACS no próprio cadastro da equipe.
+    // Assim, a tela Equipe consegue mostrar a última entrada sem depender
+    // de dados temporários do navegador.
+    await acsDoc.ref.update({
+      ultimoAcesso: FieldValue.serverTimestamp(),
+    });
 
     await adminDb.collection("usuarios").doc(acs.uid).set(
       {
