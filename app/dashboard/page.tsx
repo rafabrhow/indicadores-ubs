@@ -73,7 +73,7 @@ const indicadores = [
   },
   {
     codigo: "C7",
-    titulo: "Câncer da Mulher",
+    titulo: "Saúde da Mulher",
     descricao: "Prevenção do câncer",
     cor: "#009C3B",
     icone: Venus,
@@ -155,6 +155,17 @@ type ResumoSituacaoPacientes = {
 
 export default function DashboardPage() {
   const router = useRouter();
+  const [agora, setAgora] = useState<Date | null>(null);
+
+  useEffect(() => {
+    const atualizar = () => setAgora(new Date());
+
+    atualizar();
+
+    const intervalo = window.setInterval(atualizar, 1000);
+
+    return () => window.clearInterval(intervalo);
+  }, []);
 
   const {
     usuario,
@@ -232,6 +243,27 @@ export default function DashboardPage() {
   const [c1, setC1] = useState<ResumoC1Dashboard | null>(null);
   const [carregandoC1, setCarregandoC1] = useState(false);
 
+type PacienteSituacao = {
+  id: string;
+  nome: string;
+  indicadores: {
+    codigo: "C2" | "C3" | "C4" | "C5" | "C6" | "C7";
+    status: "pendente" | "concluido";
+  }[];
+};
+
+const [pacientesSituacao, setPacientesSituacao] = useState<
+  PacienteSituacao[]
+>([]);
+const [carregandoPacientesSituacao, setCarregandoPacientesSituacao] =
+  useState(false);
+const [modalSituacaoAberto, setModalSituacaoAberto] = useState(false);
+  const [situacaoSelecionada, setSituacaoSelecionada] = useState<
+    "sem-indicador" | "pendente" | "concluido" | null
+  >(null);
+  const [pacienteSituacaoSelecionado, setPacienteSituacaoSelecionado] =
+    useState<PacienteSituacao | null>(null);
+  
   useEffect(() => {
     if (carregando) return;
 
@@ -257,7 +289,53 @@ export default function DashboardPage() {
      * ubs/{ubsId}/cacheDashboard/atual
      *
      * Assim, C1 e situação deixam de consultar APIs individuais.
+     * 
      */
+
+    async function carregarPacientesSituacao() {
+  try {
+    setCarregandoPacientesSituacao(true);
+
+    const usuarioFirebase = auth.currentUser;
+
+    if (!usuarioFirebase) return;
+
+    const token = await usuarioFirebase.getIdToken();
+
+    const resposta = await fetch(
+      "/api/dashboard/situacao-pacientes",
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      },
+    );
+
+    const dados = await resposta.json();
+
+    if (!cancelado && resposta.ok && dados.sucesso) {
+      setPacientesSituacao(
+        Array.isArray(dados.pacientes)
+          ? dados.pacientes
+          : [],
+      );
+    }
+  } catch (error) {
+    console.error(
+      "Erro ao carregar situação detalhada dos pacientes:",
+      error,
+    );
+
+    if (!cancelado) {
+      setPacientesSituacao([]);
+    }
+  } finally {
+    if (!cancelado) {
+      setCarregandoPacientesSituacao(false);
+    }
+  }
+}
+
     async function carregarDashboardCache() {
       try {
         setCarregandoSituacaoPacientes(true);
@@ -619,6 +697,7 @@ export default function DashboardPage() {
  */
     carregarResumoDashboard();
     carregarDashboardCache();
+    carregarPacientesSituacao();
 
     return () => {
       cancelado = true;
@@ -816,7 +895,7 @@ export default function DashboardPage() {
               <div className="pointer-events-none absolute right-8 -top-16 h-40 w-40 rounded-full bg-[#F2C300]/25 blur-3xl" />
               <div className="pointer-events-none absolute bottom-[-70px] left-1/2 h-40 w-64 -translate-x-1/2 rounded-full bg-[#00A9E8]/20 blur-3xl" />
 
-              <div className="relative">
+              <div className="relative pr-44 sm:pr-52">
                 <p className="text-[11px] font-semibold text-white/85">
                   Enfermeira Gestora
                 </p>
@@ -828,15 +907,82 @@ export default function DashboardPage() {
                 <p className="mt-1 text-[10px] text-white/90">
                   {ubs?.nome || "UBS"} • {ubs?.municipio || ""} {ubs?.uf ? `• ${ubs.uf}` : ""}
                 </p>
+
+                <div className="absolute right-28 top-1/2 hidden -translate-y-1/2 sm:right-32 sm:flex">
+                  <div className="flex h-[78px] w-[250px] items-center justify-between rounded-[20px] border border-transparent bg-transparent px-4 shadow-none backdrop-blur-none">
+                    <div className="min-w-0">
+                      <p className="text-[22px] font-semibold leading-none tracking-tight tabular-nums">
+                        {agora
+                          ? agora.toLocaleTimeString("pt-BR", {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })
+                          : "—:—"}
+                      </p>
+
+                      <p className="mt-2 truncate text-[10px] font-medium text-white/70">
+                        {agora
+                          ? agora.toLocaleDateString("pt-BR", {
+                              weekday: "short",
+                              day: "2-digit",
+                              month: "long",
+                            })
+                          : "—"}
+                      </p>
+
+                      <p className="mt-0.5 text-[9px] font-medium text-white/55">
+                        Hoje • horário local
+                      </p>
+                    </div>
+
+                    <div className="relative h-14 w-14 shrink-0 rounded-full border border-white/35 bg-white/10">
+                      {Array.from({ length: 12 }).map((_, index) => {
+                        const angle = index * 30;
+                        return (
+                          <span
+                            key={index}
+                            className="absolute left-1/2 top-1/2 h-[2px] w-1 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white/75"
+                            style={{
+                              transform: `translate(-50%, -50%) rotate(${angle}deg) translateY(-23px)`,
+                            }}
+                          />
+                        );
+                      })}
+
+                      <span
+                        className="absolute bottom-1/2 left-1/2 h-[17px] w-[2px] origin-bottom -translate-x-1/2 rounded-full bg-white"
+                        style={{
+                          transform: `translateX(-50%) rotate(${agora ? ((agora.getHours() % 12) * 30 + agora.getMinutes() * 0.5) : 0}deg)`,
+                        }}
+                      />
+
+                      <span
+                        className="absolute bottom-1/2 left-1/2 h-[22px] w-[1.5px] origin-bottom -translate-x-1/2 rounded-full bg-white/90"
+                        style={{
+                          transform: `translateX(-50%) rotate(${agora ? (agora.getMinutes() * 6 + agora.getSeconds() * 0.1) : 0}deg)`,
+                        }}
+                      />
+
+                      <span
+                        className="absolute bottom-1/2 left-1/2 h-[24px] w-px origin-bottom -translate-x-1/2 rounded-full bg-white/55"
+                        style={{
+                          transform: `translateX(-50%) rotate(${agora ? agora.getSeconds() * 6 : 0}deg)`,
+                        }}
+                      />
+
+                      <span className="absolute left-1/2 top-1/2 h-1.5 w-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white shadow-sm" />
+                    </div>
+                  </div>
+                </div>
               </div>
 
-                <img
-                  src="/brasil360-logo-header.png"
-                  alt="Brasil 360"
-                  width={88}
-                  height={88}
-                  className="absolute right-5 top-1/2 h-16 w-16 -translate-y-1/2 rounded-2xl object-cover shadow-[0_8px_18px_rgba(0,59,142,0.22)] ring-1 ring-white/50 sm:h-20 sm:w-20"
-                />
+              <img
+                src="/brasil360-logo-header.png"
+                alt="Brasil 360"
+                width={88}
+                height={88}
+                className="absolute right-5 top-1/2 h-16 w-16 -translate-y-1/2 rounded-2xl object-cover shadow-[0_8px_18px_rgba(0,59,142,0.22)] ring-1 ring-white/50 sm:h-20 sm:w-20"
+              />
             </div>
           </header>
 
@@ -968,13 +1114,6 @@ export default function DashboardPage() {
                 </p>
               </div>
 
-              <button
-                type="button"
-                onClick={() => router.push("/indicadores/c5")}
-                className="text-[9px] font-semibold text-[#003B8E]"
-              >
-                Ver C5 →
-              </button>
 
             </div>
 
@@ -1017,30 +1156,42 @@ export default function DashboardPage() {
                     total > 0 ? (item.valor / total) * 100 : 0;
 
                   return (
-                    <div key={item.label}>
-                      <div className="mb-1.5 flex justify-between text-[9px]">
-                        <span className="text-gray-500">
-                          {item.label}
-                        </span>
+                    <button
+  key={item.label}
+  type="button"
+  onClick={() => {
+                        if (item.label === "Sem indicador C2–C7 aplicável") {
+                          setSituacaoSelecionada("sem-indicador");
+                        } else if (item.label === "Com indicadores pendentes") {
+                          setSituacaoSelecionada("pendente");
+                        } else {
+                          setSituacaoSelecionada("concluido");
+                        }
 
-                        <span className={`font-semibold ${item.corTexto}`}>
-                          {carregandoSituacaoPacientes ? "..." : item.valor}
-                        </span>
-                      </div>
+                        setModalSituacaoAberto(true);
+                      }}
+  className="w-full text-left transition-opacity hover:opacity-80"
+>
+  <div className="mb-1.5 flex justify-between text-[9px]">
+    <span className="text-gray-500">{item.label}</span>
 
-                      <div className={`h-1.5 rounded-full ${item.corFundo}`}>
-                        <div
-                          className={`h-1.5 rounded-full ${item.corBarra} transition-all`}
-                          style={{
-                            width: `${Math.max(
-                              0,
-                              Math.min(100, percentual)
-                            )}%`,
-                          }}
-                        />
-                      </div>
-                    </div>
-                  );
+    <span className={`font-semibold ${item.corTexto}`}>
+      {carregandoSituacaoPacientes ? "..." : item.valor}
+    </span>
+  </div>
+
+  <div className={`h-1.5 rounded-full ${item.corFundo}`}>
+    <div
+      className={`h-1.5 rounded-full ${item.corBarra} transition-all`}
+      style={{
+        width: `${Math.max(
+          0,
+          Math.min(100, percentual),
+        )}%`,
+      }}
+    />
+  </div>
+</button>                 );
                 })}
 
               </div>
@@ -1535,6 +1686,187 @@ export default function DashboardPage() {
         );
       }}
     />
+
+      {modalSituacaoAberto && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-lg overflow-hidden rounded-2xl bg-white shadow-2xl">
+            <div className="flex items-center justify-between border-b border-gray-100 px-5 py-4">
+              <div>
+                <h3 className="text-sm font-bold text-[#062B63]">
+                  Situação dos pacientes
+                </h3>
+                <p className="mt-1 text-[9px] text-gray-400">
+                  Consulte os pacientes desta categoria.
+                </p>
+              </div>
+              <button type="button" onClick={() => { setModalSituacaoAberto(false); setSituacaoSelecionada(null); }} className="flex h-8 w-8 items-center justify-center rounded-full text-lg text-gray-400 transition hover:bg-gray-100 hover:text-gray-600" aria-label="Fechar">×</button>
+            </div>
+            <div className="max-h-[65vh] overflow-y-auto px-5 py-4">
+              {carregandoPacientesSituacao ? (
+                <div className="flex min-h-[120px] items-center justify-center"><p className="text-[10px] text-gray-400">Carregando pacientes...</p></div>
+              ) : (
+                (() => {
+                  const pacientesFiltrados =
+                    situacaoSelecionada === "pendente"
+                      ? pacientesSituacao.filter((p) =>
+                          p.indicadores.some((i) => i.status === "pendente"),
+                        )
+                      : situacaoSelecionada === "concluido"
+                        ? pacientesSituacao.filter(
+                            (p) =>
+                              p.indicadores.length > 0 &&
+                              p.indicadores.every(
+                                (i) => i.status === "concluido",
+                              ),
+                          )
+                        : pacientesSituacao.filter(
+                            (p) => p.indicadores.length === 0,
+                          );
+
+                  const titulo =
+                    situacaoSelecionada === "pendente"
+                      ? "Pacientes com indicadores pendentes"
+                      : situacaoSelecionada === "concluido"
+                        ? "Pacientes com indicadores concluídos"
+                        : "Pacientes sem indicador C2–C7 aplicável";
+                  return (
+                    <>
+                      <div className="mb-3 flex items-center justify-between"><p className="text-[10px] font-bold text-[#062B63]">{titulo}</p><span className="rounded-full bg-[#EAF4FF] px-2 py-1 text-[8px] font-bold text-[#003B8E]">{pacientesFiltrados.length}</span></div>
+                      {pacientesFiltrados.length === 0 ? (
+                        <div className="rounded-xl border border-gray-100 bg-gray-50 px-4 py-6 text-center"><p className="text-[10px] text-gray-400">Nenhum paciente encontrado nesta categoria.</p></div>
+                      ) : (
+                        <div className="space-y-2">
+                          {pacientesFiltrados.map((paciente) => (
+                            <button
+                              key={paciente.id}
+                              type="button"
+                              onClick={() => setPacienteSituacaoSelecionado(paciente)}
+                              className="w-full rounded-xl border border-gray-100 bg-white px-4 py-3 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-[#B8DFF0] hover:shadow-md"
+                            >
+                              <div className="flex items-center justify-between gap-3">
+                                <p className="text-[10px] font-bold text-[#062B63]">
+                                  {paciente.nome}
+                                </p>
+                                <ChevronRight
+                                  size={14}
+                                  className="shrink-0 text-gray-300"
+                                />
+                              </div>
+
+                              {paciente.indicadores.length > 0 && (
+                                <div className="mt-2 flex flex-wrap gap-1.5">
+                                  {paciente.indicadores.map((indicador) => (
+                                    <span
+                                      key={indicador.codigo}
+                                      className={`rounded-full px-2 py-1 text-[8px] font-bold ${
+                                        indicador.status === "pendente"
+                                          ? "bg-[#FFF4C2] text-[#9A7800]"
+                                          : "bg-[#DDF7EA] text-[#007A2E]"
+                                      }`}
+                                    >
+                                      {indicador.codigo} •{" "}
+                                      {indicador.status === "pendente"
+                                        ? "Pendente"
+                                        : "Concluído"}
+                                    </span>
+                                  ))}
+                                </div>
+                              )}
+
+                              {paciente.indicadores.length === 0 && (
+                                <p className="mt-1 text-[8px] text-gray-400">
+                                  Clique para consultar a situação dos indicadores.
+                                </p>
+                              )}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </>
+                  );
+                })()
+              )}
+            </div>
+            <div className="border-t border-gray-100 px-5 py-3"><button type="button" onClick={() => { setModalSituacaoAberto(false); setSituacaoSelecionada(null); }} className="w-full rounded-xl bg-[#003B8E] px-4 py-2.5 text-[10px] font-semibold text-white transition hover:bg-[#062B63]">Fechar</button></div>
+          </div>
+        </div>
+      )}
+
+      {pacienteSituacaoSelecionado && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-2xl">
+            <div className="flex items-center justify-between border-b border-gray-100 px-5 py-4">
+              <div className="min-w-0 pr-3">
+                <h3 className="text-sm font-bold text-[#062B63]">
+                  Situação do paciente
+                </h3>
+                <p className="mt-1 truncate text-[9px] text-gray-400">
+                  {pacienteSituacaoSelecionado.nome}
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setPacienteSituacaoSelecionado(null)}
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-lg text-gray-400 transition hover:bg-gray-100 hover:text-gray-600"
+                aria-label="Fechar"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="px-5 py-4">
+              <div className="space-y-2">
+                {(["C2", "C3", "C4", "C5", "C6", "C7"] as const).map(
+                  (codigo) => {
+                    const indicador =
+                      pacienteSituacaoSelecionado.indicadores.find(
+                        (item) => item.codigo === codigo,
+                      );
+
+                    return (
+                      <div
+                        key={codigo}
+                        className="flex items-center justify-between rounded-xl border border-gray-100 bg-gray-50 px-4 py-3"
+                      >
+                        <span className="text-[10px] font-bold text-[#062B63]">
+                          {codigo}
+                        </span>
+
+                        <span
+                          className={`rounded-full px-2.5 py-1 text-[8px] font-bold ${
+                            indicador?.status === "pendente"
+                              ? "bg-[#FFF4C2] text-[#9A7800]"
+                              : indicador?.status === "concluido"
+                                ? "bg-[#DDF7EA] text-[#007A2E]"
+                                : "bg-gray-200 text-gray-500"
+                          }`}
+                        >
+                          {indicador?.status === "pendente"
+                            ? "Pendente"
+                            : indicador?.status === "concluido"
+                              ? "Concluído"
+                              : "Não aplicável"}
+                        </span>
+                      </div>
+                    );
+                  },
+                )}
+              </div>
+            </div>
+
+            <div className="border-t border-gray-100 px-5 py-3">
+              <button
+                type="button"
+                onClick={() => setPacienteSituacaoSelecionado(null)}
+                className="w-full rounded-xl bg-[#003B8E] px-4 py-2.5 text-[10px] font-semibold text-white transition hover:bg-[#062B63]"
+              >
+                Fechar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
   </main>
   );

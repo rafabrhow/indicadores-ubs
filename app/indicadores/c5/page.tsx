@@ -45,7 +45,11 @@ type Relatorio = {
     classificacao: string;
     praticas: Record<
       "A" | "B" | "C" | "D",
-      { atingidos: number; percentual: number }
+      {
+        atingidos: number;
+        pendentes: number;
+        percentual: number;
+      }
     >;
   };
   pacientes?: Paciente[];
@@ -56,6 +60,24 @@ function classePontuacao(valor: number) {
   if (valor > 50) return "text-[#2563EB]";
   if (valor > 25) return "text-[#D97706]";
   return "text-[#DC2626]";
+}
+
+function nivelPrioridade(pendentes: number, total: number) {
+  if (total <= 0 || pendentes <= 0) {
+    return null;
+  }
+
+  const percentualPendente = (pendentes / total) * 100;
+
+  if (percentualPendente >= 50) {
+    return "Prioridade";
+  }
+
+  if (percentualPendente >= 25) {
+    return "Atenção";
+  }
+
+  return null;
 }
 
 export default function RelatorioC5Page() {
@@ -288,11 +310,30 @@ export default function RelatorioC5Page() {
 
           <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-5">
             {[
-              { codigo: "Todos", titulo: "Todos", total: resumo.totalElegiveis },
-              { codigo: "A", titulo: "A • Consulta", total: resumo.totalElegiveis - Math.round(resumo.praticas.A.atingidos) },
-              { codigo: "B", titulo: "B • Pressão", total: resumo.totalElegiveis - Math.round(resumo.praticas.B.atingidos) },
-              { codigo: "C", titulo: "C • Peso + altura", total: resumo.totalElegiveis - Math.round(resumo.praticas.C.atingidos) },
-              { codigo: "D", titulo: "D • Visitas", total: resumo.totalElegiveis - Math.round(resumo.praticas.D.atingidos) },
+              {
+                codigo: "Todos",
+                titulo: "Todos",
+                total: resumo.totalElegiveis,
+                prioridade: null,
+              },
+              ...(["A", "B", "C", "D"] as const).map((codigo) => {
+                const dados = resumo.praticas[codigo];
+
+                return {
+                  codigo,
+                  titulo: {
+                    A: "A • Consulta",
+                    B: "B • Pressão",
+                    C: "C • Peso + altura",
+                    D: "D • Visitas",
+                  }[codigo],
+                  total: dados.pendentes,
+                  prioridade: nivelPrioridade(
+                    dados.pendentes,
+                    resumo.totalElegiveis
+                  ),
+                };
+              }),
             ].map((item) => (
               <button
                 key={item.codigo}
@@ -300,11 +341,39 @@ export default function RelatorioC5Page() {
                 className={`rounded-xl border p-3 text-left transition ${
                   filtroPratica === item.codigo
                     ? "border-[#7C3AED] bg-[#EAF7FC]"
-                    : "border-[#DDEAF2] bg-[#F7FAFC]"
+                    : item.codigo === "A"
+                      ? "border-[#9EDFF2] bg-gradient-to-br from-[#EAF7FC] to-[#D7F1FA]"
+                      : item.codigo === "B"
+                        ? "border-[#A7E6C0] bg-gradient-to-br from-[#ECFDF3] to-[#DDF7E7]"
+                        : item.codigo === "C"
+                          ? "border-[#F5D66A] bg-gradient-to-br from-[#FFF9E5] to-[#FFF1B8]"
+                          : item.codigo === "D"
+                            ? "border-[#FECACA] bg-gradient-to-br from-[#FFF1F2] to-[#FFE4E6]"
+                            : "border-[#DDEAF2] bg-[#F7FAFC]"
                 }`}
               >
-                <p className="text-[9px] font-bold text-[#003B8E]">{item.titulo}</p>
-                <p className="mt-1 text-lg font-extrabold text-[#003B8E]">{item.total}</p>
+                <div className="flex items-start justify-between gap-2">
+                  <p className="text-[9px] font-bold text-[#003B8E]">
+                    {item.titulo}
+                  </p>
+
+                  {item.prioridade === "Prioridade" && (
+                    <span className="shrink-0 rounded-full bg-[#FEE2E2] px-2 py-0.5 text-[7px] font-extrabold text-[#DC2626]">
+                      Prioridade
+                    </span>
+                  )}
+
+                  {item.prioridade === "Atenção" && (
+                    <span className="shrink-0 rounded-full bg-[#FEF3C7] px-2 py-0.5 text-[7px] font-extrabold text-[#D97706]">
+                      Atenção
+                    </span>
+                  )}
+                </div>
+
+                <p className="mt-1 text-lg font-extrabold text-[#003B8E]">
+                  {item.total}
+                </p>
+
                 <p className="text-[8px] text-gray-400">
                   {item.codigo === "Todos" ? "elegíveis" : "pendentes"}
                 </p>

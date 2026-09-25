@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { FieldValue } from "firebase-admin/firestore";
+import { FieldValue, type DocumentReference } from "firebase-admin/firestore";
 import { adminAuth, adminDb } from "@/lib/firebase-admin";
 import {
   analisarCSVPEC,
@@ -31,6 +31,7 @@ import {
 import { avaliarC6 } from "@/lib/indicadores/c6-idoso";
 import { avaliarC7 } from "@/lib/indicadores/c7-mulher";
 import { avaliarBucal } from "@/lib/indicadores/bucal";
+import { calcularSituacaoPacientes } from "@/lib/indicadores/situacao-pacientes";
 
 export const runtime = "nodejs";
 
@@ -156,13 +157,6 @@ function competenciaC5(valor: unknown): string {
   ).padStart(2, "0")}`;
 }
 
-function normalizarTextoC6(valor: unknown): string {
-  return String(valor ?? "")
-    .normalize("NFD")
-    .replace(/[\\u0300-\\u036f]/g, "")
-    .toLowerCase()
-    .trim();
-}
 
 function dataReferenciaC6(valor: unknown, fallback = new Date()): Date {
   const texto = typeof valor === "string" ? valor : "";
@@ -200,13 +194,199 @@ function competenciaC7(valor: unknown): string {
   return `${data.getFullYear()}-${String(data.getMonth() + 1).padStart(2, "0")}`;
 }
 
-function normalizarTextoC7(valor: unknown): string {
-  return String(valor ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+
+function dataMillisC7(valor: unknown): number {
+  if (valor instanceof Date) return valor.getTime();
+  if (typeof valor === "number" && Number.isFinite(valor)) return valor;
+
+  if (valor && typeof valor === "object") {
+    const objeto = valor as {
+      toMillis?: unknown;
+      seconds?: unknown;
+      _seconds?: unknown;
+    };
+
+    if (typeof objeto.toMillis === "function") {
+      return objeto.toMillis();
+    }
+
+    if (typeof objeto.seconds === "number") {
+      return objeto.seconds * 1000;
+    }
+
+    if (typeof objeto._seconds === "number") {
+      return objeto._seconds * 1000;
+    }
+  }
+
+  return 0;
 }
+
+function normalizarC7(valor: unknown): string {
+  return String(valor ?? "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim()
+    .toLowerCase();
+}
+
+function possuiValorC7(valor: unknown): boolean {
+  return (
+    valor !== undefined &&
+    valor !== null &&
+    String(valor).trim() !== ""
+  );
+}
+
+function juntarRegistroC7(
+  registro: Record<string, unknown>,
+): Record<string, unknown> {
+  const dadosBase =
+    registro.dadosBase &&
+    typeof registro.dadosBase === "object"
+      ? (registro.dadosBase as Record<string, unknown>)
+      : {};
+
+  const dadosEspecificos =
+    registro.dadosEspecificos &&
+    typeof registro.dadosEspecificos === "object"
+      ? (registro.dadosEspecificos as Record<string, unknown>)
+      : {};
+
+  return {
+    ...dadosBase,
+    ...dadosEspecificos,
+    ...registro,
+  };
+}
+
+function consolidarRegistrosC7(
+  registros: Array<{
+    id: string;
+    criadoEm: number;
+    dados: Record<string, unknown>;
+  }>,
+): Record<string, unknown>[] {
+  const grupos = new Map<string, Record<string, unknown>>();
+
+  for (const item of registros) {
+    const registro: Record<string, unknown> = {
+      ...item.dados,
+      id: item.id,
+    };
+
+    const cpf = normalizarC7(
+      registro.CPF ?? registro.cpf ?? "",
+    );
+    const cns = normalizarC7(
+      registro.CNS ?? registro.cns ?? "",
+    );
+    const nome = normalizarC7(
+      registro.Nome ?? registro.nome ?? "",
+    );
+    const nascimento = normalizarC7(
+      registro["Data de nascimento"] ??
+        registro.dataNascimento ??
+        "",
+    );
+
+    const chave =
+      item.id ||
+      (cpf ? `cpf:${cpf}` : "") ||
+      (cns ? `cns:${cns}` : "") ||
+      (nome && nascimento
+        ? `nome:${nome}|nasc:${nascimento}`
+        : `registro:${nome}`);
+
+    const existente = grupos.get(chave);
+
+    if (!existente) {
+      grupos.set(chave, { ...registro });
+      continue;
+    }
+
+    for (const [campo, valor] of Object.entries(registro)) {
+      if (!possuiValorC7(existente[campo]) && possuiValorC7(valor)) {
+        existente[campo] = valor;
+      }
+    }
+  }
+
+  return Array.from(grupos.values());
+}
+
+async function calcularC7Consolidado(
+  ubsRef: DocumentReference,
+): Promise<{
+  resultado: ReturnType<typeof avaliarC7>;
+  competencia: string;
+  quantidadeImportacoesConsideradas: number;
+  quantidadeRegistrosConsolidados: number;
+} | null> {
+  const importacoesSnap = await ubsRef
+    .collection("importacoesPEC")
+    .orderBy("criadoEm", "desc")
+    .limit(50)
+    .get();
+
+  if (importacoesSnap.empty) {
+    return null;
+  }
+
+  const registrosConsolidaveis: Array<{
+    id: string;
+    criadoEm: number;
+    dados: Record<string, unknown>;
+  }> = [];
+
+  let referenciaMillis = 0;
+
+  for (const importacao of importacoesSnap.docs) {
+    const importacaoDados = importacao.data();
+    const criadoEm = dataMillisC7(importacaoDados.criadoEm);
+
+    if (criadoEm > referenciaMillis) {
+      referenciaMillis = criadoEm;
+    }
+
+    const registrosSnap = await importacao.ref
+      .collection("registros")
+      .get();
+
+    for (const registroDoc of registrosSnap.docs) {
+      registrosConsolidaveis.push({
+        id: registroDoc.id,
+        criadoEm,
+        dados: juntarRegistroC7(registroDoc.data()),
+      });
+    }
+  }
+
+  if (registrosConsolidaveis.length === 0) {
+    return null;
+  }
+
+  const registros = consolidarRegistrosC7(registrosConsolidaveis);
+
+  const referencia =
+    referenciaMillis > 0
+      ? new Date(referenciaMillis)
+      : new Date();
+
+  const resultado = avaliarC7(registros, referencia);
+
+  return {
+    resultado,
+    competencia: competenciaC7(referencia),
+    quantidadeImportacoesConsideradas: importacoesSnap.docs.length,
+    quantidadeRegistrosConsolidados: registros.length,
+  };
+}
+
 
 function idadeEmAnosC6(valor: unknown): number {
   const texto = String(valor ?? "").trim().toLowerCase();
-  const match = texto.match(/\\d+/);
+  const match = texto.match(/\d+/);
 
   if (!match) return 0;
 
@@ -217,13 +397,6 @@ type PacienteC6Importacao = ReturnType<typeof avaliarC6> & {
   id: string;
 };
 
-function normalizarTextoC3(valor: unknown): string {
-  return String(valor ?? "")
-    .normalize("NFD")
-    .replace(/[\\u0300-\\u036f]/g, "")
-    .toLowerCase()
-    .trim();
-}
 
 export async function POST(request: Request) {
   try {
@@ -474,12 +647,7 @@ export async function POST(request: Request) {
      * da coleção de importações para descobrir os mesmos dados que já estão
      * disponíveis em resultado.linhas.
      */
-    const ehFonteC2 =
-      String(resultado.listaTematica ?? "")
-        .normalize("NFD")
-        .replace(/[\\u0300-\\u036f]/g, "")
-        .toLowerCase()
-        .includes("desenvolvimento infantil");
+   const ehFonteC2 = codigoIndicadorOrigem === "C2";
 
     let resumoC7: {
       competencia: string;
@@ -634,42 +802,36 @@ export async function POST(request: Request) {
         string,
         { atingidos: number; percentual: number }
       >;
+      pacientes: Array<
+        ResultadoC2Infantil & {
+          id: string;
+          nome: string;
+          cpf: string;
+          microarea: string;
+          idade: string;
+        }
+      >;
     } | null = null;
 
-    const ehFonteC3 =
-      normalizarTextoC3(resultado.listaTematica).includes("gestacao") ||
-      normalizarTextoC3(resultado.grupoCondicoes).includes("gestacao") ||
-      normalizarTextoC3(resultado.filtroProblemas).includes("gestacao");
+    const ehFonteC3 = codigoIndicadorOrigem === "C3";
 
-    const normalizarTextoC4 = (valor: unknown): string =>
-      String(valor ?? "")
-        .normalize("NFD")
-        .replace(/[\\u0300-\\u036f]/g, "")
-        .toLowerCase()
-        .trim();
+    const ehFonteC4 = codigoIndicadorOrigem === "C4";
 
-    const ehFonteC4 =
-      normalizarTextoC4(resultado.listaTematica).includes("diabetes") ||
-      normalizarTextoC4(resultado.grupoCondicoes).includes("diabetes");
-
-    const filtroC4 = normalizarTextoC4(resultado.filtroProblemas);
+    const filtroC4 = normalizarTextoC1(resultado.filtroProblemas);
 
     const ehFonteC4Diabetes =
       ehFonteC4 && filtroC4.includes("somente problemas ativos");
 
-    const ehFonteC6 =
-      normalizarTextoC6(resultado.listaTematica).includes("pessoa idosa") ||
-      normalizarTextoC6(resultado.grupoCondicoes).includes("pessoa idosa") ||
-      normalizarTextoC6(resultado.listaTematica).includes("idoso");
+    const ehFonteC6 = codigoIndicadorOrigem === "C6";
 
-    const ehFonteC7 =
-      normalizarTextoC7(resultado.listaTematica).includes("saude da mulher") ||
-      normalizarTextoC7(resultado.grupoCondicoes).includes("saude da mulher") ||
-      normalizarTextoC7(resultado.listaTematica).includes("mulher");
+    const ehFonteC7 = codigoIndicadorOrigem === "C7";
 
-    const ehFonteBucal = /sa[uú]de\\s+bucal/i.test(
-      String(resultado.listaTematica ?? "")
-    );
+    const ehFonteBucal =
+  String(resultado.listaTematica ?? "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .includes("saude bucal");
 
     if (ehFonteC4Diabetes) {
       const referenciaC4 = dataReferenciaC4(resultado.geradoEm);
@@ -908,15 +1070,29 @@ export async function POST(request: Request) {
       const avaliadosC2: Array<
         ResultadoC2Infantil & {
           id: string;
+          nome: string;
+          cpf: string;
+          microarea: string;
+          idade: string;
         }
       > = resultado.linhas.map((registro) => {
-        const dadosAvaliacao = {
-          ...registro,
-        };
+        /*
+         * Os campos de identificação vêm diretamente da linha original
+         * do CSV. Isso evita que uma separação/mapeamento dos campos base
+         * deixe nome, CPF, microárea ou idade vazios na tela do C2.
+         *
+         * O cálculo do C2 continua recebendo o registro original.
+         */
+
+        const { base } = separarDadosBase(registro);
 
         return {
           id: identificarPaciente(registro),
-          ...avaliarC2Infantil(dadosAvaliacao, {
+          nome: String(base.Nome ?? ""),
+          cpf: String(base.CPF ?? ""),
+          microarea: normalizarMicroarea(base.Microárea || ""),
+          idade: String(base.Idade ?? ""),
+          ...avaliarC2Infantil(registro, {
             referencia: referenciaC2,
             metadados: {
               listaTematica: resultado.listaTematica,
@@ -995,6 +1171,7 @@ export async function POST(request: Request) {
         pontuacao: pontuacaoC2,
         classificacao: classificacaoC2,
         praticas: praticasC2,
+        pacientes: avaliadosC2,
       };
     }
 
@@ -1520,6 +1697,7 @@ export async function POST(request: Request) {
     }
 
     if (resumoC2) {
+
       await salvarResultadoIndicadorMensal({
         codigo: "C2",
         competencia: resumoC2.competencia,
@@ -1536,6 +1714,7 @@ export async function POST(request: Request) {
           pontuacao: resumoC2.pontuacao,
           classificacao: resumoC2.classificacao,
           praticas: resumoC2.praticas,
+          pacientes: resumoC2.pacientes,
         },
       });
 
@@ -1613,19 +1792,58 @@ export async function POST(request: Request) {
           pacientes: resumoC7.pacientes,
         },
       });
-      await atualizarIndicadorCacheDashboard(ubsId, "c7", {
-        competencia: resumoC7.competencia,
-        totalRegistros: resumoC7.totalRegistros,
-        totalElegiveis: resumoC7.totalElegiveis,
-        pontuacao: resumoC7.pontuacao,
-        pontuacaoParcial: resumoC7.pontuacaoParcial,
-        pontosDisponiveis: resumoC7.pontosDisponiveis,
-        classificacao: resumoC7.classificacao,
-        completo: resumoC7.completo,
-        motivoIncompleto: resumoC7.motivoIncompleto,
-        praticas: resumoC7.praticas,
-      }, resumoC7.competencia);
     }
+
+    /*
+     * O card C7 do Dashboard precisa usar a mesma base consolidada
+     * da tela detalhada do C7.
+     *
+     * Isso é importante porque pacientes de 9–14 anos podem aparecer
+     * em outros relatórios do PEC (por exemplo, lista temática Geral),
+     * e não somente no arquivo Saúde da Mulher.
+     *
+     * O resultado mensal acima continua representando o arquivo C7
+     * que foi importado. Já o cache do Dashboard representa a visão
+     * consolidada das importações PEC, mantendo Dashboard e tela C7
+     * com a mesma fotografia dos pacientes.
+     */
+    const c7Consolidado = await calcularC7Consolidado(ubsRef);
+
+    if (c7Consolidado) {
+      const resultadoC7Consolidado = c7Consolidado.resultado;
+
+      await atualizarIndicadorCacheDashboard(ubsId, "c7", {
+        competencia: c7Consolidado.competencia,
+        totalRegistros:
+          resultadoC7Consolidado.pacientes?.length ?? 0,
+        totalElegiveis:
+          resultadoC7Consolidado.totalElegiveis ?? 0,
+        pontuacao:
+          resultadoC7Consolidado.pontuacao ?? null,
+        pontuacaoParcial:
+          resultadoC7Consolidado.pontuacaoParcial ?? 0,
+        pontosDisponiveis:
+          resultadoC7Consolidado.pontosDisponiveis ?? 0,
+        classificacao:
+          resultadoC7Consolidado.classificacao ?? "Indisponível",
+        completo:
+          resultadoC7Consolidado.completo === true,
+        motivoIncompleto:
+          resultadoC7Consolidado.motivoIncompleto ?? null,
+        praticas:
+          resultadoC7Consolidado.praticas ?? {},
+      }, c7Consolidado.competencia);
+    }
+
+        const situacaoPacientes =
+      await calcularSituacaoPacientes(ubsId);
+
+    await atualizarIndicadorCacheDashboard(
+      ubsId,
+      "situacaoPacientes",
+      situacaoPacientes,
+      null,
+    );
 
     return NextResponse.json({
       sucesso: true,
@@ -1672,8 +1890,6 @@ export async function POST(request: Request) {
       },
     });
   } catch (error) {
-    console.error("Erro na importação do PEC:", error);
-
     return NextResponse.json(
       {
         sucesso: false,

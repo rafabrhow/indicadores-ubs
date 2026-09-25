@@ -56,6 +56,28 @@ function formatarPercentual(valor: number | null | undefined) {
       })}%`;
 }
 
+function nivelPrioridade(pendentes: number, elegiveis: number) {
+  if (elegiveis <= 0 || pendentes <= 0) return null;
+
+  const percentualPendente = (pendentes / elegiveis) * 100;
+
+  if (percentualPendente >= 50) return "Prioridade";
+  if (percentualPendente >= 25) return "Atenção";
+  return null;
+}
+
+function praticaAplicavel(
+  idade: number | undefined,
+  codigo: "A" | "B" | "C" | "D",
+) {
+  if (idade == null) return false;
+
+  if (codigo === "A") return idade >= 25 && idade <= 64;
+  if (codigo === "B") return idade >= 9 && idade <= 14;
+  if (codigo === "C") return idade >= 14 && idade <= 69;
+  return idade >= 50 && idade <= 69;
+}
+
 export default function C7Page() {
   const router = useRouter();
   const [dados, setDados] = useState<Resultado | null>(null);
@@ -127,6 +149,7 @@ export default function C7Page() {
   const pacientes = useMemo(() => {
     const lista = dados?.pacientes ?? [];
     const termo = busca.trim().toLowerCase();
+    const praticasFiltro = dados?.praticas;
 
     return lista.filter((p) => {
       const bateBusca =
@@ -138,9 +161,22 @@ export default function C7Page() {
       const bateMicroarea =
         microarea === "Todas" || (p.microarea || "Sem microárea") === microarea;
 
+      const praticaSelecionada =
+        pratica === "Todas"
+          ? null
+          : praticasFiltro?.[pratica as keyof typeof praticasFiltro];
+
+      const codigoPratica =
+        pratica === "Todas"
+          ? null
+          : (pratica as "A" | "B" | "C" | "D");
+
       const batePratica =
         pratica === "Todas" ||
-        p.praticas[pratica as keyof typeof p.praticas] === false;
+        (praticaSelecionada?.disponivel === true &&
+          codigoPratica !== null &&
+          praticaAplicavel(p.idade, codigoPratica) &&
+          p.praticas[codigoPratica] === false);
 
       return bateBusca && bateMicroarea && batePratica;
     });
@@ -274,40 +310,81 @@ export default function C7Page() {
         </section>
 
         <section className="mt-3 rounded-2xl bg-white p-4 shadow-sm">
-          <div className="mb-3 flex items-center gap-2">
-            <Filter size={14} className="text-[#003B8E]" />
-            <h2 className="text-[11px] font-bold">Boas práticas</h2>
+          <div className="mb-1 flex items-center justify-between gap-2">
+            <div>
+              <h2 className="text-sm font-bold">Onde concentrar o acompanhamento</h2>
+              <p className="mt-1 text-[8px] text-gray-400">
+                Toque em uma prática para mostrar somente quem ainda não a atingiu.
+              </p>
+            </div>
+            <Filter size={15} className="text-[#003B8E]" />
           </div>
 
-          <div className="grid grid-cols-2 gap-2">
+          <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
             {(["A", "B", "C", "D"] as const).map((codigo) => {
               const p = praticas?.[codigo];
               if (!p) return null;
 
+              const pendentes = Math.max(p.elegiveis - p.atingidos, 0);
+              const prioridade = nivelPrioridade(pendentes, p.elegiveis);
+
               return (
-                <div key={codigo} className={`rounded-xl border p-3 shadow-[0_4px_10px_rgba(0,59,142,0.07)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_8px_16px_rgba(0,59,142,0.11)] ${
-                    codigo === "A" ? "border-[#9EDFF2] bg-gradient-to-br from-[#EAF7FC] to-[#D7F1FA]" :
-                    codigo === "B" ? "border-[#A7E6C0] bg-gradient-to-br from-[#ECFDF3] to-[#DDF7E7]" :
-                    codigo === "C" ? "border-[#F5D66A] bg-gradient-to-br from-[#FFF9E5] to-[#FFF1B8]" :
-                    "border-[#B7C8F5] bg-gradient-to-br from-[#EEF2FF] to-[#DDE7FF]"
-                  }`}>
-                    <div className="flex items-center justify-between">
-                      <p className="text-[9px] font-bold">{codigo} — {p.titulo}</p>
-                      <span className="text-[9px] font-bold text-[#003B8E]">{formatarPercentual(p.percentual)}</span>
-                    </div>
-                    <p className="mt-1 text-[7px] text-gray-500">{p.descricao}</p>
-                    <div className="mt-2 h-1.5 rounded-full bg-white/80">
-                      <div className={`h-1.5 rounded-full ${
-                        codigo === "A" ? "bg-[#00A9E8]" :
-                        codigo === "B" ? "bg-[#009C3B]" :
-                        codigo === "C" ? "bg-[#F2C300]" :
-                        "bg-[#003B8E]"
-                      }`} style={{ width: `${Math.min(p.percentual ?? 0, 100)}%` }} />
-                    </div>
-                    <p className="mt-1 text-[7px] text-gray-400">{p.atingidos}/{p.elegiveis} • {p.disponivel ? `${p.pontos?.toFixed(1)} pts` : "sem denominador"}</p>
+                <button
+                  key={codigo}
+                  type="button"
+                  onClick={() => setPratica(pratica === codigo ? "Todas" : codigo)}
+                  className={`rounded-xl border p-3 text-left transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_8px_16px_rgba(0,59,142,0.11)] ${
+                    pratica === codigo
+                      ? "border-[#7C3AED] bg-[#EAF7FC] shadow-[0_4px_12px_rgba(124,58,237,0.12)]"
+                      : codigo === "A"
+                        ? "border-[#9EDFF2] bg-gradient-to-br from-[#EAF7FC] to-[#D7F1FA]"
+                        : codigo === "B"
+                          ? "border-[#A7E6C0] bg-gradient-to-br from-[#ECFDF3] to-[#DDF7E7]"
+                          : codigo === "C"
+                            ? "border-[#F5D66A] bg-gradient-to-br from-[#FFF9E5] to-[#FFF1B8]"
+                            : "border-[#FECACA] bg-gradient-to-br from-[#FFF1F2] to-[#FFE4E6]"
+                  }`}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="text-[9px] font-bold text-[#003B8E]">
+                      {codigo} • {p.titulo}
+                    </p>
+
+                    {prioridade === "Prioridade" && (
+                      <span className="shrink-0 rounded-full bg-[#FEE2E2] px-2 py-0.5 text-[7px] font-extrabold text-[#DC2626]">
+                        Prioridade
+                      </span>
+                    )}
+
+                    {prioridade === "Atenção" && (
+                      <span className="shrink-0 rounded-full bg-[#FEF3C7] px-2 py-0.5 text-[7px] font-extrabold text-[#D97706]">
+                        Atenção
+                      </span>
+                    )}
                   </div>
-                );
-              })}
+
+                  <p className="mt-1 text-lg font-extrabold text-[#003B8E]">
+                    {pendentes}
+                  </p>
+                  <p className="text-[8px] text-gray-400">pendentes</p>
+
+                  <div className="mt-2 h-1.5 rounded-full bg-white/80">
+                    <div
+                      className={`h-1.5 rounded-full ${
+                        codigo === "A"
+                          ? "bg-[#00A9E8]"
+                          : codigo === "B"
+                            ? "bg-[#009C3B]"
+                            : codigo === "C"
+                              ? "bg-[#F2C300]"
+                              : "bg-[#003B8E]"
+                      }`}
+                      style={{ width: `${Math.min(p.percentual ?? 0, 100)}%` }}
+                    />
+                  </div>
+                </button>
+              );
+            })}
           </div>
         </section>
 
@@ -334,17 +411,22 @@ export default function C7Page() {
               ))}
             </select>
 
-            <select
-              value={pratica}
-              onChange={(e) => setPratica(e.target.value)}
-              className="rounded-lg border border-[#DDEAF2] px-3 py-2 text-[10px]"
-            >
-              <option>Todas</option>
-              <option value="A">A — Colo do útero</option>
-              <option value="B">B — HPV</option>
-              <option value="C">C — Saúde sexual</option>
-              <option value="D">D — Mama</option>
-            </select>
+            <div className="flex items-center justify-between rounded-lg border border-[#DDEAF2] bg-[#F7FAFC] px-3 py-2">
+              <span className="text-[8px] text-gray-500">
+                {pratica === "Todas"
+                  ? "Todas as práticas"
+                  : `Filtro ativo: prática ${pratica}`}
+              </span>
+              {pratica !== "Todas" && (
+                <button
+                  type="button"
+                  onClick={() => setPratica("Todas")}
+                  className="text-[8px] font-extrabold text-[#003B8E]"
+                >
+                  Limpar filtro
+                </button>
+              )}
+            </div>
           </div>
         </section>
 
@@ -374,19 +456,38 @@ export default function C7Page() {
                 {expandido && (
                   <div className="border-t border-gray-100 px-4 py-3">
                     <div className="grid grid-cols-2 gap-2">
-                      {(["A", "B", "C", "D"] as const).map((codigo) => (
-                        <div key={codigo} className="rounded-lg bg-[#F7FAFC] p-2">
-                          <div className="flex items-center justify-between">
-                            <span className="text-[8px] font-bold">{codigo}</span>
-                            <span className={`text-[8px] font-bold ${paciente.praticas[codigo] ? "text-emerald-600" : "text-red-500"}`}>
-                              {paciente.praticas[codigo] ? "Atingida" : "Pendente"}
-                            </span>
+                      {(["A", "B", "C", "D"] as const).map((codigo) => {
+                        const aplicavel = praticaAplicavel(paciente.idade, codigo);
+                        const atingida = paciente.praticas[codigo];
+
+                        return (
+                          <div key={codigo} className="rounded-lg bg-[#F7FAFC] p-2">
+                            <div className="flex items-center justify-between">
+                              <span className="text-[8px] font-bold">{codigo}</span>
+
+                              <span
+                                className={`text-[8px] font-bold ${
+                                  !aplicavel
+                                    ? "text-gray-400"
+                                    : atingida
+                                      ? "text-emerald-600"
+                                      : "text-red-500"
+                                }`}
+                              >
+                                {!aplicavel
+                                  ? "Não aplicável"
+                                  : atingida
+                                    ? "Atingida"
+                                    : "Pendente"}
+                              </span>
+                            </div>
+
+                            <p className="mt-1 text-[7px] text-gray-500">
+                              {paciente.detalhes[codigo]}
+                            </p>
                           </div>
-                          <p className="mt-1 text-[7px] text-gray-500">
-                            {paciente.detalhes[codigo]}
-                          </p>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </div>
                 )}

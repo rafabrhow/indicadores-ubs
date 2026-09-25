@@ -29,6 +29,26 @@ export type ResultadoC2Infantil = {
   pontuacao: number;
   classificacao: "Ótimo" | "Bom" | "Suficiente" | "Regular";
   situacaoAcompanhamento: "Em acompanhamento" | "Atenção";
+
+  // Dados detalhados encontrados no relatório do PEC
+  peso: string;
+  altura: string;
+  dataUltimaMedicao: string;
+
+  primeiraConsulta: string;
+  quantidadeConsultas: number;
+
+  primeiraVisitaDomiciliar: string;
+  segundaVisitaDomiciliar: string;
+  quantidadeVisitasDomiciliares: number;
+
+  doses: {
+    penta: number;
+    polio: number;
+    scrScrv: number;
+    pneumococica: number;
+  };
+
   praticas: ResultadoPraticaC2[];
 };
 
@@ -140,6 +160,23 @@ export function avaliarC2Infantil(
 
   const visitas = numero(dados, "Quantidade de visitas domiciliares até os 24 meses de idade");
 
+    const diasDesdeUltimaVisita = numero(
+    dados,
+    "Dias desde a última visita domiciliar"
+  );
+
+  const mesesDesdeUltimaVisita = numero(
+    dados,
+    "Meses desde a última visita domiciliar"
+  );
+
+  const ultimaVisitaRecente =
+    diasDesdeUltimaVisita >= 0 && mesesDesdeUltimaVisita >= 0;
+
+  const evidenciaVisitaRecente =
+    ultimaVisitaRecente &&
+    (diasDesdeUltimaVisita > 0 || mesesDesdeUltimaVisita > 0);
+
   // Para o C2, o esquema considerado no documento é:
   // penta 3 doses, pólio injetável 3 doses, SCR/SCRV 2 doses após 12 meses,
   // pneumocócica 2 doses. A avaliação usa somente o que o CSV expõe.
@@ -172,11 +209,19 @@ export function avaliarC2Infantil(
       pesosAlturas >= 9,
       `Registros simultâneos de peso/altura: ${pesosAlturas}/9.`
     ),
-    pratica(
+        pratica(
       "D",
       "2 visitas domiciliares: 1ª até 30 dias e 2ª até 6 meses",
       primeiraAte30 && segundaAte6Meses,
-      `Visitas registradas: ${visitas}. Primeira até 30 dias: ${primeiraAte30 ? "sim" : "não"}. Segunda até 6 meses: ${segundaAte6Meses ? "sim" : "não"}.`
+      `Visitas registradas: ${visitas}. Primeira até 30 dias: ${
+        primeiraAte30 ? "sim" : "não"
+      }. Segunda até 6 meses: ${
+        segundaAte6Meses ? "sim" : "não"
+      }. Última visita: ${
+        evidenciaVisitaRecente
+          ? `${diasDesdeUltimaVisita} dia(s) atrás`
+          : "não informada"
+      }.`
     ),
     pratica(
       "E",
@@ -197,7 +242,30 @@ export function avaliarC2Infantil(
     idadeMeses,
     pontuacao,
     classificacao: classificacao(pontuacao),
-    situacaoAcompanhamento: quantidadePendencias >= 3 ? "Atenção" : "Em acompanhamento",
+    situacaoAcompanhamento:
+      quantidadePendencias >= 3 ? "Atenção" : "Em acompanhamento",
+
+    peso: texto(dados, "Peso"),
+    altura: texto(dados, "Altura"),
+    dataUltimaMedicao: texto(
+      dados,
+      "Data da última medição de peso e altura"
+    ),
+
+    primeiraConsulta: idadePrimeira,
+    quantidadeConsultas: consultas,
+
+    primeiraVisitaDomiciliar: primeiraVisita,
+    segundaVisitaDomiciliar: segundaVisita,
+    quantidadeVisitasDomiciliares: visitas,
+
+    doses: {
+      penta,
+      polio,
+      scrScrv: mmr,
+      pneumococica: pneumo,
+    },
+
     praticas,
   };
 }

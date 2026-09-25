@@ -29,8 +29,33 @@ type Relatorio = {
   pontuacao: number;
   classificacao: Paciente["classificacao"];
   totalElegiveis: number;
-  praticas: Record<"A" | "B" | "C" | "D", { atingidos: number; percentual: number }>;
+  praticas: Record<
+    "A" | "B" | "C" | "D",
+    {
+      atingidos: number;
+      pendentes: number;
+      percentual: number;
+    }
+  >;
 };
+
+function nivelPrioridade(pendentes: number, total: number) {
+  if (total <= 0 || pendentes <= 0) {
+    return null;
+  }
+
+  const percentualPendente = (pendentes / total) * 100;
+
+  if (percentualPendente >= 50) {
+    return "Prioridade";
+  }
+
+  if (percentualPendente >= 25) {
+    return "Atenção";
+  }
+
+  return null;
+}
 
 export default function C6Page() {
   const router = useRouter();
@@ -204,6 +229,21 @@ export default function C6Page() {
             </div>
 
             <div className="mt-4 grid grid-cols-2 gap-2">
+              <div className="col-span-2 flex items-center justify-between rounded-lg border border-[#DDEAF2] bg-[#F7FAFC] px-3 py-2">
+                <p className="text-[8px] text-gray-500">
+                  Toque em uma prática para filtrar somente quem ainda não a atingiu.
+                </p>
+                {pratica !== "Todas" && (
+                  <button
+                    type="button"
+                    onClick={() => setPratica("Todas")}
+                    className="text-[8px] font-extrabold text-[#003B8E]"
+                  >
+                    Limpar filtro
+                  </button>
+                )}
+              </div>
+
               <div className="col-span-2 flex items-center gap-2 rounded-lg border border-[#DDEAF2] px-3 py-2">
                 <Search size={14} className="text-gray-400" />
                 <input
@@ -227,13 +267,66 @@ export default function C6Page() {
                 <option>Regular</option>
               </select>
 
-              <select value={pratica} onChange={(e) => setPratica(e.target.value)} className="rounded-lg border border-[#DDEAF2] bg-white px-2 py-2 text-[10px]">
-                <option value="Todas">Todas as práticas</option>
-                <option value="A">A — Consulta</option>
-                <option value="B">B — Peso + altura</option>
-                <option value="C">C — Visitas</option>
-                <option value="D">D — Influenza</option>
-              </select>
+              <div className="col-span-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                {(["A", "B", "C", "D"] as const).map((codigo) => {
+                  const dados = relatorio.praticas[codigo];
+                  const prioridade = nivelPrioridade(
+                    dados.pendentes,
+                    relatorio.totalElegiveis
+                  );
+
+                  const titulo = {
+                    A: "A • Consulta",
+                    B: "B • Peso + altura",
+                    C: "C • Visitas",
+                    D: "D • Influenza",
+                  }[codigo];
+
+                  return (
+                    <button
+                      key={codigo}
+                      type="button"
+                      onClick={() =>
+                        setPratica(pratica === codigo ? "Todas" : codigo)
+                      }
+                      className={`rounded-xl border p-3 text-left transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_8px_16px_rgba(0,59,142,0.11)] ${
+                        pratica === codigo
+                          ? "border-[#7C3AED] bg-[#EAF7FC] shadow-[0_4px_12px_rgba(124,58,237,0.12)]"
+                          : codigo === "A"
+                            ? "border-[#9EDFF2] bg-gradient-to-br from-[#EAF7FC] to-[#D7F1FA]"
+                            : codigo === "B"
+                              ? "border-[#A7E6C0] bg-gradient-to-br from-[#ECFDF3] to-[#DDF7E7]"
+                              : codigo === "C"
+                                ? "border-[#F5D66A] bg-gradient-to-br from-[#FFF9E5] to-[#FFF1B8]"
+                                : "border-[#FECACA] bg-gradient-to-br from-[#FFF1F2] to-[#FFE4E6]"
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <p className="text-[9px] font-bold text-[#003B8E]">
+                          {titulo}
+                        </p>
+
+                        {prioridade === "Prioridade" && (
+                          <span className="shrink-0 rounded-full bg-[#FEE2E2] px-2 py-0.5 text-[7px] font-extrabold text-[#DC2626]">
+                            Prioridade
+                          </span>
+                        )}
+
+                        {prioridade === "Atenção" && (
+                          <span className="shrink-0 rounded-full bg-[#FEF3C7] px-2 py-0.5 text-[7px] font-extrabold text-[#D97706]">
+                            Atenção
+                          </span>
+                        )}
+                      </div>
+
+                      <p className="mt-1 text-lg font-extrabold text-[#003B8E]">
+                        {dados.pendentes}
+                      </p>
+                      <p className="text-[8px] text-gray-400">pendentes</p>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
 
             <div className="mt-4 space-y-2">

@@ -193,20 +193,27 @@ const importacoesC5: ImportacaoC5[] = importsSnapshot.docs
     const elegiveis = pacientes.filter((item) => item.elegivel);
     const totalElegiveis = elegiveis.length;
 
-    const quantidadePratica = {
-      A: elegiveis.filter((p) =>
-        p.praticas.some((item) => item.codigo === "A" && item.atingida)
-      ).length,
-      B: elegiveis.filter((p) =>
-        p.praticas.some((item) => item.codigo === "B" && item.atingida)
-      ).length,
-      C: elegiveis.filter((p) =>
-        p.praticas.some((item) => item.codigo === "C" && item.atingida)
-      ).length,
-      D: elegiveis.filter((p) =>
-        p.praticas.some((item) => item.codigo === "D" && item.atingida)
-      ).length,
-    };
+   const quantidadePratica = {
+  A: elegiveis.filter((p) =>
+    p.praticas.some((item) => item.codigo === "A" && item.atingida)
+  ).length,
+  B: elegiveis.filter((p) =>
+    p.praticas.some((item) => item.codigo === "B" && item.atingida)
+  ).length,
+  C: elegiveis.filter((p) =>
+    p.praticas.some((item) => item.codigo === "C" && item.atingida)
+  ).length,
+  D: elegiveis.filter((p) =>
+    p.praticas.some((item) => item.codigo === "D" && item.atingida)
+  ).length,
+};
+
+const pendentesPratica = {
+  A: totalElegiveis - quantidadePratica.A,
+  B: totalElegiveis - quantidadePratica.B,
+  C: totalElegiveis - quantidadePratica.C,
+  D: totalElegiveis - quantidadePratica.D,
+};
 
     const somaPontos = elegiveis.reduce(
       (total, paciente) => total + paciente.pontuacao,
@@ -246,35 +253,39 @@ const importacoesC5: ImportacaoC5[] = importsSnapshot.docs
         pontuacao: pontuacaoMedia,
         classificacao,
         praticas: {
-          A: {
-            atingidos: quantidadePratica.A,
-            percentual:
-              totalElegiveis > 0
-                ? Number(((quantidadePratica.A / totalElegiveis) * 100).toFixed(1))
-                : 0,
-          },
-          B: {
-            atingidos: quantidadePratica.B,
-            percentual:
-              totalElegiveis > 0
-                ? Number(((quantidadePratica.B / totalElegiveis) * 100).toFixed(1))
-                : 0,
-          },
-          C: {
-            atingidos: quantidadePratica.C,
-            percentual:
-              totalElegiveis > 0
-                ? Number(((quantidadePratica.C / totalElegiveis) * 100).toFixed(1))
-                : 0,
-          },
-          D: {
-            atingidos: quantidadePratica.D,
-            percentual:
-              totalElegiveis > 0
-                ? Number(((quantidadePratica.D / totalElegiveis) * 100).toFixed(1))
-                : 0,
-          },
-        },
+  A: {
+    atingidos: quantidadePratica.A,
+    pendentes: pendentesPratica.A,
+    percentual:
+      totalElegiveis > 0
+        ? Number(((quantidadePratica.A / totalElegiveis) * 100).toFixed(1))
+        : 0,
+  },
+  B: {
+    atingidos: quantidadePratica.B,
+    pendentes: pendentesPratica.B,
+    percentual:
+      totalElegiveis > 0
+        ? Number(((quantidadePratica.B / totalElegiveis) * 100).toFixed(1))
+        : 0,
+  },
+  C: {
+    atingidos: quantidadePratica.C,
+    pendentes: pendentesPratica.C,
+    percentual:
+      totalElegiveis > 0
+        ? Number(((quantidadePratica.C / totalElegiveis) * 100).toFixed(1))
+        : 0,
+  },
+  D: {
+    atingidos: quantidadePratica.D,
+    pendentes: pendentesPratica.D,
+    percentual:
+      totalElegiveis > 0
+        ? Number(((quantidadePratica.D / totalElegiveis) * 100).toFixed(1))
+        : 0,
+  },
+},
       },
       pacientes,
     });

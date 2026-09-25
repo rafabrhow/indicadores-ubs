@@ -19,7 +19,7 @@ export type ResultadoPraticaC5 = {
   pontos: number;
   atingida: boolean;
   detalhe: string;
-};
+}; 
 
 export type ResultadoC5Hipertensao = {
   elegivel: boolean;

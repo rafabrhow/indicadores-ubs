@@ -62,14 +62,27 @@ function normalizarTexto(valor: unknown) {
 function idadeEmAnos(valor: unknown): number | null {
   if (typeof valor === "number" && Number.isFinite(valor)) return valor;
 
-  const valorTexto = String(valor ?? "").trim();
+  const valorTexto = String(valor ?? "").trim().toLowerCase();
   if (!valorTexto) return null;
 
-  const match = valorTexto.match(/(\d+(?:[.,]\d+)?)\s*ano/i);
+  const matchAnos = valorTexto.match(
+    /(\d+(?:[.,]\d+)?)\s*ano(?:s)?(?:\s*e\s*(\d+)\s*mes(?:es)?)?/i
+  );
 
-  if (match) {
-    const idade = Number(match[1].replace(",", "."));
-    return Number.isFinite(idade) ? idade : null;
+  if (matchAnos) {
+    const anos = Number(matchAnos[1].replace(",", "."));
+    const meses = matchAnos[2] ? Number(matchAnos[2]) : 0;
+
+    if (!Number.isFinite(anos)) return null;
+
+    return anos + (Number.isFinite(meses) ? meses / 12 : 0);
+  }
+
+  const matchMeses = valorTexto.match(/(\d+(?:[.,]\d+)?)\s*mes(?:es)?/i);
+
+  if (matchMeses) {
+    const meses = Number(matchMeses[1].replace(",", "."));
+    return Number.isFinite(meses) ? meses / 12 : null;
   }
 
   const somenteNumero = Number(valorTexto.replace(",", "."));
@@ -336,14 +349,7 @@ export default function PacientesPage() {
                 </div>
                 <p className="mt-3 text-[9px] font-medium text-[#39705A]">Com dados PEC</p>
                 <p className="mt-1 text-2xl font-extrabold text-[#003B8E]">
-                  {pacientes.filter((p) => {
-                    const idade = idadeEmAnos(p.idade);
-                    const c2Elegivel = idade !== null && idade <= 2;
-
-                    return p.tematicasPEC.some(
-                      (tema) => !ehTematicaC2(tema) || c2Elegivel
-                    );
-                  }).length}
+                  {pacientes.filter((p) => p.tematicasPEC.length > 0).length}
                 </p>
               </div>
             </div>

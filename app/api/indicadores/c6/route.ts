@@ -199,10 +199,26 @@ export async function GET(request: NextRequest) {
                 : "Regular",
         totalElegiveis: total,
         praticas: {
-          A: { atingidos: praticas.A, percentual: percentual(praticas.A) },
-          B: { atingidos: praticas.B, percentual: percentual(praticas.B) },
-          C: { atingidos: praticas.C, percentual: percentual(praticas.C) },
-          D: { atingidos: praticas.D, percentual: percentual(praticas.D) },
+          A: {
+            atingidos: praticas.A,
+            pendentes: total - praticas.A,
+            percentual: percentual(praticas.A),
+          },
+          B: {
+            atingidos: praticas.B,
+            pendentes: total - praticas.B,
+            percentual: percentual(praticas.B),
+          },
+          C: {
+            atingidos: praticas.C,
+            pendentes: total - praticas.C,
+            percentual: percentual(praticas.C),
+          },
+          D: {
+            atingidos: praticas.D,
+            pendentes: total - praticas.D,
+            percentual: percentual(praticas.D),
+          },
         },
       },
       pacientes,

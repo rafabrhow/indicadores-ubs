@@ -28,7 +28,7 @@ export async function salvarResultadoIndicadorMensal(
 
   if (!competenciaNormalizada) {
     throw new Error(
-      "Competência inválida. Use o formato YYYY-MM.",
+      `Competência inválida. Recebida: "${resultado.competencia}"`,
     );
   }
 
@@ -47,6 +47,31 @@ export async function salvarResultadoIndicadorMensal(
 
   const docId = `${competenciaNormalizada}_${codigoNormalizado}`;
 
+  const caminho =
+    `ubs/${resultado.ubsId}/resultadosIndicadores/${docId}`;
+
+  console.log(
+    "[PERSISTENCIA INDICADOR] INÍCIO",
+    {
+      codigo: codigoNormalizado,
+      competencia: competenciaNormalizada,
+      ubsId: resultado.ubsId,
+      docId,
+      caminho,
+      geradoEm:
+        typeof resultado.dados?.geradoEm === "string"
+          ? resultado.dados.geradoEm
+          : resultado.dados?.importacao &&
+              typeof resultado.dados.importacao === "object"
+            ? (
+                resultado.dados.importacao as {
+                  geradoEm?: unknown;
+                }
+              ).geradoEm
+            : null,
+    },
+  );
+
   const referencia = adminDb
     .collection("ubs")
     .doc(resultado.ubsId)
@@ -62,6 +87,15 @@ export async function salvarResultadoIndicadorMensal(
       atualizadoEm: FieldValue.serverTimestamp(),
     },
     { merge: true },
+  );
+
+  console.log(
+    "[PERSISTENCIA INDICADOR] GRAVADO COM SUCESSO",
+    {
+      codigo: codigoNormalizado,
+      competencia: competenciaNormalizada,
+      caminho,
+    },
   );
 }
 
