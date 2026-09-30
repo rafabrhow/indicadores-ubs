@@ -12,7 +12,7 @@ import {
   UserRound,
   UsersRound,
 } from "lucide-react";
-import { collection, getDocs } from "firebase/firestore";
+import { collection, getDocs, limit, orderBy, query } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
@@ -108,11 +108,15 @@ export default function PacientesPage() {
   const { usuario, ubs, carregando, logout } = useAuth();
 
   const [pacientes, setPacientes] = useState<Paciente[]>([]);
+  const [novosPacientesIds, setNovosPacientesIds] = useState<Set<string>>(
+    new Set()
+  );
   const [carregandoPacientes, setCarregandoPacientes] = useState(true);
   const [erro, setErro] = useState("");
   const [busca, setBusca] = useState("");
   const [microarea, setMicroarea] = useState("todas");
   const [indicador, setIndicador] = useState("todos");
+  const [filtroNovos, setFiltroNovos] = useState<"todos" | "novos">("todos");
 
   useEffect(() => {
   if (carregando) return;
@@ -133,9 +137,16 @@ export default function PacientesPage() {
     try {
       setErro("");
 
-      const snapshot = await getDocs(
-        collection(db, "ubs", ubsId, "pacientes")
-      );
+      const [snapshot, importacoesSnapshot] = await Promise.all([
+        getDocs(collection(db, "ubs", ubsId, "pacientes")),
+        getDocs(
+          query(
+            collection(db, "ubs", ubsId, "importacoesPEC"),
+            orderBy("criadoEm", "desc"),
+            limit(1)
+          )
+        ),
+      ]);
 
       const lista: Paciente[] = snapshot.docs.map((item) => {
         const d = item.data();
@@ -174,6 +185,32 @@ export default function PacientesPage() {
         a.nome.localeCompare(b.nome, "pt-BR")
       );
 
+      const novosIds = new Set<string>();
+
+      if (!importacoesSnapshot.empty) {
+        const ultimaImportacaoId = importacoesSnapshot.docs[0].id;
+
+        const registrosSnapshot = await getDocs(
+          collection(
+            db,
+            "ubs",
+            ubsId,
+            "importacoesPEC",
+            ultimaImportacaoId,
+            "registros"
+          )
+        );
+
+        registrosSnapshot.docs.forEach((registro) => {
+          const dadosRegistro = registro.data();
+
+          if (dadosRegistro.novoNaImportacao === true) {
+            novosIds.add(registro.id);
+          }
+        });
+      }
+
+      setNovosPacientesIds(novosIds);
       setPacientes(lista);
     } catch (error) {
       console.error("Erro ao carregar pacientes:", error);
@@ -221,9 +258,12 @@ export default function PacientesPage() {
         indicador === "todos" ||
         indicadoresVisiveis.includes(indicador);
 
-      return buscaOK && microOK && indicadorOK;
+      const novoOK =
+        filtroNovos === "todos" || novosPacientesIds.has(p.id);
+
+      return buscaOK && microOK && indicadorOK && novoOK;
     });
-  }, [pacientes, busca, microarea, indicador]);
+  }, [pacientes, busca, microarea, indicador, filtroNovos, novosPacientesIds]);
 
   if (carregando || !usuario) {
     return (
@@ -324,7 +364,7 @@ export default function PacientesPage() {
           </header>
 
           <div className="px-4 pb-6 pt-5 sm:px-6 md:pt-6 lg:px-7">
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
               <div className="rounded-2xl border border-[#9EDFF2] bg-gradient-to-br from-[#EAF7FC] via-white to-[#D7F1FA] p-4 shadow-[0_6px_14px_rgba(0,169,232,0.12),0_2px_5px_rgba(0,0,0,0.05)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_10px_20px_rgba(0,169,232,0.18)]">
                 <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#DDF4FC] shadow-sm ring-1 ring-[#9EDFF2]">
                   <UserRound size={15} className="text-[#00A9E8]" />
@@ -342,6 +382,26 @@ export default function PacientesPage() {
                   {pacientes.filter((p) => p.tematicasPEC.length === 0).length}
                 </p>
               </div>
+
+              <button
+                type="button"
+                onClick={() => setFiltroNovos((valor) => valor === "novos" ? "todos" : "novos")}
+                className={`rounded-2xl border p-4 text-left shadow-[0_6px_14px_rgba(0,156,59,0.12),0_2px_5px_rgba(0,0,0,0.05)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_10px_20px_rgba(0,156,59,0.18)] ${
+                  filtroNovos === "novos"
+                    ? "border-[#009C3B] bg-gradient-to-br from-[#D9F6E5] via-white to-[#C8F0D8] ring-2 ring-[#009C3B]/20"
+                    : "border-[#A7E6C0] bg-gradient-to-br from-[#ECFDF3] via-white to-[#DDF7E7]"
+                }`}
+              >
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#D9F6E5] shadow-sm ring-1 ring-[#A7E6C0]">
+                  <UsersRound size={15} className="text-[#009C3B]" />
+                </div>
+                <p className="mt-3 text-[9px] font-medium text-[#39705A]">
+                  Novos na última importação
+                </p>
+                <p className="mt-1 text-2xl font-extrabold text-[#003B8E]">
+                  {novosPacientesIds.size}
+                </p>
+              </button>
 
               <div className="rounded-2xl border border-[#A7E6C0] bg-gradient-to-br from-[#ECFDF3] via-white to-[#DDF7E7] p-4 shadow-[0_6px_14px_rgba(0,156,59,0.12),0_2px_5px_rgba(0,0,0,0.05)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_10px_20px_rgba(0,156,59,0.18)]">
                 <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#D9F6E5] shadow-sm ring-1 ring-[#A7E6C0]">
@@ -365,7 +425,7 @@ export default function PacientesPage() {
                 />
               </div>
 
-              <div className="mt-3 grid grid-cols-2 gap-2">
+              <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
                 <select value={microarea} onChange={(e) => setMicroarea(e.target.value)} className="h-10 rounded-xl border border-gray-200 px-3 text-[10px] font-semibold">
                   <option value="todas">Todas as microáreas</option>
                   {microareas.map((m) => <option key={m} value={m}>Microárea {m}</option>)}
@@ -374,6 +434,11 @@ export default function PacientesPage() {
                 <select value={indicador} onChange={(e) => setIndicador(e.target.value)} className="h-10 rounded-xl border border-gray-200 px-3 text-[10px] font-semibold">
                   <option value="todos">Por indicador</option>
                   {INDICADORES.map(([id, nome]) => <option key={id} value={id}>{id} — {nome}</option>)}
+                </select>
+
+                <select value={filtroNovos} onChange={(e) => setFiltroNovos(e.target.value as "todos" | "novos")} className="h-10 rounded-xl border border-gray-200 px-3 text-[10px] font-semibold">
+                  <option value="todos">Todos os pacientes</option>
+                  <option value="novos">Somente novos</option>
                 </select>
               </div>
             </div>
@@ -397,7 +462,14 @@ export default function PacientesPage() {
                     </div>
 
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-bold">{p.nome}</p>
+                      <div className="flex items-center gap-2">
+                        <p className="truncate text-sm font-bold">{p.nome}</p>
+                        {novosPacientesIds.has(p.id) && (
+                          <span className="shrink-0 rounded-full bg-[#009C3B] px-2 py-0.5 text-[8px] font-extrabold text-white">
+                            NOVO
+                          </span>
+                        )}
+                      </div>
                       <p className="mt-1 text-[10px] text-gray-500">
                         {p.idade || "Idade não informada"} {p.sexo ? `• ${p.sexo}` : ""}
                         {p.microareaId ? ` • MA ${p.microareaId}` : ""}

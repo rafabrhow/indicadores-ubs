@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { FieldValue, type DocumentReference } from "firebase-admin/firestore";
+import { FieldValue, FieldPath, type DocumentReference } from "firebase-admin/firestore";
 import { adminAuth, adminDb } from "@/lib/firebase-admin";
 import {
   analisarCSVPEC,
@@ -10,7 +10,10 @@ import {
 } from "@/lib/pec/parser";
 import { analisarRelatorioC1 } from "@/lib/indicadores/c1-relatorio";
 import { salvarResultadoIndicadorMensal } from "@/lib/indicadores/persistencia-indicadores-mensais";
-import { atualizarIndicadorCacheDashboard } from "@/lib/indicadores/cache-dashboard";
+import {
+  atualizarIndicadorCacheDashboard,
+  salvarCacheSituacaoPacientes,
+} from "@/lib/indicadores/cache-dashboard";
 import {
   avaliarC2Infantil,
   type ResultadoC2Infantil,
@@ -1308,27 +1311,78 @@ export async function POST(request: Request) {
     }
 
     let novos = 0;
-    let atualizados = 0;
-    let processados = 0;
+let atualizados = 0;
+let processados = 0;
 
-    // IDs realmente novos nesta importação.
-    // Evita contar duas vezes o mesmo paciente se ele aparecer no CSV.
-    const novosPacientesIds = new Set<string>();
+// IDs realmente novos nesta importação.
+// Evita contar duas vezes o mesmo paciente se ele aparecer no CSV.
+const novosPacientesIds = new Set<string>();
 
-    let batch = adminDb.batch();
-    let operacoes = 0;
+/*
+ * Carrega previamente os pacientes que já existem na UBS.
+ *
+ * O Firestore permite no máximo 30 valores em uma consulta
+ * "in" por vez. Por isso dividimos os IDs em blocos de 30.
+ *
+ * Assim evitamos fazer um .get() individual para cada linha
+ * do CSV durante o processamento.
+ */
+const pacientesIdsImportacao = Array.from(
+  new Set(
+    resultado.linhas.map((registro) =>
+      identificarPaciente(registro),
+    ),
+  ),
+);
 
-    async function confirmarBatch() {
-      if (operacoes === 0) return;
-      await batch.commit();
-      batch = adminDb.batch();
-      operacoes = 0;
-    }
+const pacientesExistentes = new Map<
+  string,
+  FirebaseFirestore.DocumentSnapshot
+>();
+
+const pacientesCollection = ubsRef.collection("pacientes");
+
+for (
+  let inicio = 0;
+  inicio < pacientesIdsImportacao.length;
+  inicio += 30
+) {
+  const blocoIds = pacientesIdsImportacao.slice(
+    inicio,
+    inicio + 30,
+  );
+
+  if (blocoIds.length === 0) continue;
+
+  const pacientesSnap = await pacientesCollection
+    .where(FieldPath.documentId(), "in", blocoIds)
+    .get();
+
+  for (const pacienteDoc of pacientesSnap.docs) {
+    pacientesExistentes.set(
+      pacienteDoc.id,
+      pacienteDoc,
+    );
+  }
+}
+
+let batch = adminDb.batch();
+let operacoes = 0;
+
+async function confirmarBatch() {
+  if (operacoes === 0) return;
+
+  await batch.commit();
+
+  batch = adminDb.batch();
+  operacoes = 0;
+}
 
     for (const registro of resultado.linhas) {
-      const pacienteId = identificarPaciente(registro);
-      const pacienteRef = ubsRef.collection("pacientes").doc(pacienteId);
-      const pacienteSnap = await pacienteRef.get();
+  const pacienteId = identificarPaciente(registro);
+  const pacienteRef = ubsRef.collection("pacientes").doc(pacienteId);
+  const pacienteSnap = pacientesExistentes.get(pacienteId);
+  const pacienteExiste = Boolean(pacienteSnap?.exists);
 
       const { base, especificos } = separarDadosBase(registro);
       const microareaId = normalizarMicroarea(base.Microárea || "");
@@ -1371,7 +1425,7 @@ export async function POST(request: Request) {
         ultimaImportacaoPECId: importacaoRef.id,
       };
 
-      if (!pacienteSnap.exists) {
+      if (!pacienteExiste) {
         novos++;
         novosPacientesIds.add(pacienteId);
         batch.set(pacienteRef, {
@@ -1397,6 +1451,7 @@ export async function POST(request: Request) {
         filtroProblemas: resultado.filtroProblemas,
         codigoIndicadorOrigem,
         fonteC5HipertensaoAtiva,
+        novoNaImportacao: !pacienteExiste,
         dadosBase: base,
         dadosEspecificos: especificos,
         microareaId,
@@ -1838,11 +1893,9 @@ export async function POST(request: Request) {
         const situacaoPacientes =
       await calcularSituacaoPacientes(ubsId);
 
-    await atualizarIndicadorCacheDashboard(
+    await salvarCacheSituacaoPacientes(
       ubsId,
-      "situacaoPacientes",
       situacaoPacientes,
-      null,
     );
 
     return NextResponse.json({

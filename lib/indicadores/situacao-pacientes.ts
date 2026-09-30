@@ -19,6 +19,17 @@ type RegistroHistorico = {
   dadosEspecificos: Dados;
 };
 
+export type IndicadorSituacaoPaciente = {
+  codigo: "C2" | "C3" | "C4" | "C5" | "C6" | "C7";
+  status: "pendente" | "concluido";
+};
+
+export type PacienteSituacao = {
+  id: string;
+  nome: string;
+  indicadores: IndicadorSituacaoPaciente[];
+};
+
 export type SituacaoPacientes = {
   totalPacientes: number;
   semNenhumRegistro: number;
@@ -27,6 +38,7 @@ export type SituacaoPacientes = {
   comRegistroSemIndicadorAplicavel: number;
   indicadoresConcluidosPercentual: number;
   totalClassificado: number;
+  pacientes: PacienteSituacao[];
 };
 
 function texto(valor: unknown): string {
@@ -321,8 +333,20 @@ export async function calcularSituacaoPacientes(
     .collection("pacientes")
     .get();
 
-  const importacoesSnapshot = await ubsRef
-    .collection("importacoesPEC")
+  /*
+   * Os documentos de "registros" já carregam os dados necessários
+   * para reconstruir o histórico do paciente:
+   * listaTematica, grupoCondicoes, filtroProblemas,
+   * dadosBase, dadosEspecificos e criadoEm.
+   *
+   * Como "registros" é uma subcoleção presente em todas as
+   * importações PEC, usamos Collection Group para fazer uma única
+   * consulta em vez de consultar "importacoesPEC" e depois fazer
+   * uma consulta "registros" para cada importação.
+   */
+  const registrosSnapshot = await adminDb
+    .collectionGroup("registros")
+    .where("ubsId", "==", ubsId)
     .get();
 
   const historicosPorPaciente = new Map<
@@ -330,70 +354,96 @@ export async function calcularSituacaoPacientes(
     RegistroHistorico[]
   >();
 
-  await Promise.all(
-    importacoesSnapshot.docs.map(async (importacaoDoc) => {
-      const importacao = importacaoDoc.data();
+  for (const registroDoc of registrosSnapshot.docs) {
+    const registro = registroDoc.data();
 
-      const criadoEm =
-        importacao.criadoEm?.toDate?.() ?? new Date(0);
+    const importacaoRef = registroDoc.ref.parent.parent;
+    const importacaoId = importacaoRef?.id ?? "";
 
-      const registrosSnapshot = await importacaoDoc.ref
-        .collection("registros")
-        .get();
+    const criadoEm =
+      registro.criadoEm?.toDate?.() ?? new Date(0);
 
-      for (const registroDoc of registrosSnapshot.docs) {
-        const registro = registroDoc.data();
+    const pacienteId =
+      texto(registro.pacienteId) || registroDoc.id;
 
-        const item: RegistroHistorico = {
-          pacienteId: registroDoc.id,
-          importacaoId: importacaoDoc.id,
-          criadoEm,
+    const item: RegistroHistorico = {
+      pacienteId,
+      importacaoId,
+      criadoEm,
 
-          listaTematica: texto(
-            registro.listaTematica ??
-              importacao.listaTematica,
-          ),
+      listaTematica: texto(registro.listaTematica),
 
-          grupoCondicoes: texto(
-            registro.grupoCondicoes ??
-              importacao.grupoCondicoes,
-          ),
+      grupoCondicoes: texto(registro.grupoCondicoes),
 
-          filtroProblemas: texto(
-            registro.filtroProblemas ??
-              importacao.filtroProblemas,
-          ),
+      filtroProblemas: texto(registro.filtroProblemas),
 
-          dadosBase:
-            registro.dadosBase &&
-            typeof registro.dadosBase === "object"
-              ? registro.dadosBase
-              : {},
+      dadosBase:
+        registro.dadosBase &&
+        typeof registro.dadosBase === "object"
+          ? registro.dadosBase
+          : {},
 
-          dadosEspecificos:
-            registro.dadosEspecificos &&
-            typeof registro.dadosEspecificos === "object"
-              ? registro.dadosEspecificos
-              : {},
-        };
+      dadosEspecificos:
+        registro.dadosEspecificos &&
+        typeof registro.dadosEspecificos === "object"
+          ? registro.dadosEspecificos
+          : {},
+    };
 
-        const lista =
-          historicosPorPaciente.get(registroDoc.id) ?? [];
+    const lista =
+      historicosPorPaciente.get(pacienteId) ?? [];
 
-        lista.push(item);
+    lista.push(item);
 
-        historicosPorPaciente.set(
-          registroDoc.id,
-          lista,
-        );
-      }
-    }),
-  );
+    historicosPorPaciente.set(
+      pacienteId,
+      lista,
+    );
+  }
 
   let semNenhumRegistro = 0;
   let comIndicadoresPendentes = 0;
   let comIndicadoresConcluidos = 0;
   let comRegistroSemIndicadorAplicavel = 0;
+
+  const pacientes: PacienteSituacao[] = [];
+
+  /*
+   * C7 é calculado uma única vez para toda a UBS.
+   * O resultado é indexado por paciente para evitar:
+   * - recalcular C7 para cada paciente;
+   * - procurar o paciente com .find() repetidamente.
+   */
+  const registrosC7PorPaciente = new Map<
+    string,
+    RegistroHistorico[]
+  >();
+
+  for (const [pacienteId, historicos] of historicosPorPaciente) {
+    const registrosC7 = historicos.filter((registro) =>
+      temaContem(registro, ["mulher"]),
+    );
+
+    if (registrosC7.length > 0) {
+      registrosC7PorPaciente.set(
+        pacienteId,
+        registrosC7,
+      );
+    }
+  }
+
+  const resultadoC7Geral = avaliarC7Situacao(
+    [...registrosC7PorPaciente.values()].flat(),
+    referenciaInput,
+  );
+
+  const pacientesC7PorId = new Map<string, any>();
+
+  if (resultadoC7Geral) {
+    for (const item of resultadoC7Geral.pacientes ?? []) {
+      pacientesC7PorId.set(String(item.id), item);
+    }
+  }
 
   for (const pacienteDoc of pacientesSnapshot.docs) {
     const paciente = pacienteDoc.data();
@@ -401,14 +451,8 @@ export async function calcularSituacaoPacientes(
     const historicos =
       historicosPorPaciente.get(pacienteDoc.id) ?? [];
 
-    const acompanhamentosSnapshot =
-      await pacienteDoc.ref
-        .collection("acompanhamentos")
-        .limit(1)
-        .get();
-
     const temAcompanhamento =
-      !acompanhamentosSnapshot.empty;
+      paciente.temAcompanhamento === true;
 
     const temRegistroClinico =
       historicos.some(possuiValorClinico) ||
@@ -471,18 +515,6 @@ export async function calcularSituacaoPacientes(
         "idoso",
         "idos",
       ],
-    );
-
-    /*
-     * C7
-     *
-     * Diferente dos demais indicadores, C7 pode trabalhar
-     * com vários registros para montar o conjunto de mulheres.
-     */
-    const registrosC7 = historicos.filter((registro) =>
-      temaContem(registro, [
-        "mulher",
-      ]),
     );
 
     const resultados: any[] = [];
@@ -559,41 +591,80 @@ export async function calcularSituacaoPacientes(
     /*
      * C7 é tratado separadamente porque o avaliador
      * retorna uma coleção de pacientes.
+     *
+     * O resultado já foi calculado uma única vez
+     * antes do loop principal.
      */
-    const resultadoC7 =
-      avaliarC7Situacao(
-        registrosC7,
-        referenciaInput,
-      );
+    const c7Paciente =
+      pacientesC7PorId.get(
+        String(pacienteDoc.id),
+      ) ?? null;
 
-    let c7Paciente: any | null = null;
+    if (c7Paciente) {
+      const c7TemIndicadorAplicavel =
+        pacienteC7Pendente(c7Paciente) ||
+        pacienteC7Concluido(c7Paciente);
 
-    if (resultadoC7) {
-      c7Paciente =
-        resultadoC7.pacientes.find(
-          (item: any) =>
-            String(item.id) ===
-            String(pacienteDoc.id),
-        ) ?? null;
-
-      if (c7Paciente) {
-        const c7TemIndicadorAplicavel =
-          pacienteC7Pendente(c7Paciente) ||
-          pacienteC7Concluido(c7Paciente);
-
-        if (c7TemIndicadorAplicavel) {
-          resultados.push({
-            codigo: "C7",
-            resultado: {
-              paciente: c7Paciente,
-            },
-          });
-        }
+      if (c7TemIndicadorAplicavel) {
+        resultados.push({
+          codigo: "C7",
+          resultado: {
+            paciente: c7Paciente,
+          },
+        });
       }
     }
 
     const temIndicadorAplicavel =
       resultados.length > 0;
+
+    const indicadores: IndicadorSituacaoPaciente[] = [];
+
+    for (const item of resultados) {
+      if (item.codigo === "C7") {
+        if (
+          pacienteC7Pendente(
+            item.resultado.paciente,
+          )
+        ) {
+          indicadores.push({
+            codigo: "C7",
+            status: "pendente",
+          });
+        } else if (
+          pacienteC7Concluido(
+            item.resultado.paciente,
+          )
+        ) {
+          indicadores.push({
+            codigo: "C7",
+            status: "concluido",
+          });
+        }
+
+        continue;
+      }
+
+      if (
+        possuiPraticaPendente(
+          item.resultado,
+        )
+      ) {
+        indicadores.push({
+          codigo: item.codigo,
+          status: "pendente",
+        });
+      } else if (
+        possuiPraticasConcluidas(
+          item.resultado,
+        )
+      ) {
+        indicadores.push({
+          codigo: item.codigo,
+          status: "concluido",
+        });
+      }
+    }
 
     /*
      * Nenhum dos C2-C7 é aplicável ao paciente.
@@ -605,6 +676,14 @@ export async function calcularSituacaoPacientes(
         comRegistroSemIndicadorAplicavel += 1;
       }
 
+      pacientes.push({
+        id: pacienteDoc.id,
+        nome:
+          texto(paciente.nome) ||
+          "Paciente sem nome",
+        indicadores: [],
+      });
+
       continue;
     }
 
@@ -612,34 +691,21 @@ export async function calcularSituacaoPacientes(
      * Verifica se existe pelo menos um indicador
      * aplicável ainda pendente.
      */
-    let pendente = false;
-
-    for (const item of resultados) {
-      if (item.codigo === "C7") {
-        if (
-          pacienteC7Pendente(
-            item.resultado.paciente,
-          )
-        ) {
-          pendente = true;
-          break;
-        }
-
-        continue;
-      }
-
-      if (
-        possuiPraticaPendente(
-          item.resultado,
-        )
-      ) {
-        pendente = true;
-        break;
-      }
-    }
+    const pendente = indicadores.some(
+      (item) => item.status === "pendente",
+    );
 
     if (pendente) {
       comIndicadoresPendentes += 1;
+
+      pacientes.push({
+        id: pacienteDoc.id,
+        nome:
+          texto(paciente.nome) ||
+          "Paciente sem nome",
+        indicadores,
+      });
+
       continue;
     }
 
@@ -647,37 +713,25 @@ export async function calcularSituacaoPacientes(
      * Se chegou aqui, existe indicador aplicável
      * e nenhum está pendente.
      */
-    let concluido = true;
-
-    for (const item of resultados) {
-      if (item.codigo === "C7") {
-        if (
-          !pacienteC7Concluido(
-            item.resultado.paciente,
-          )
-        ) {
-          concluido = false;
-          break;
-        }
-
-        continue;
-      }
-
-      if (
-        !possuiPraticasConcluidas(
-          item.resultado,
-        )
-      ) {
-        concluido = false;
-        break;
-      }
-    }
+    const concluido =
+      indicadores.length > 0 &&
+      indicadores.every(
+        (item) => item.status === "concluido",
+      );
 
     if (concluido) {
       comIndicadoresConcluidos += 1;
     } else {
       comRegistroSemIndicadorAplicavel += 1;
     }
+
+    pacientes.push({
+      id: pacienteDoc.id,
+      nome:
+        texto(paciente.nome) ||
+        "Paciente sem nome",
+      indicadores,
+    });
   }
 
   const totalPacientes =
@@ -708,5 +762,6 @@ export async function calcularSituacaoPacientes(
     comRegistroSemIndicadorAplicavel,
     indicadoresConcluidosPercentual,
     totalClassificado,
+    pacientes,
   };
 }

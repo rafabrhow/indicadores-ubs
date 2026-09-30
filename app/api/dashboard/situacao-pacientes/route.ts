@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server";
 import { adminAuth, adminDb } from "@/lib/firebase-admin";
+import {
+  buscarCacheSituacaoPacientes,
+} from "@/lib/indicadores/cache-dashboard";
 
 import { avaliarC2Infantil } from "@/lib/indicadores/c2-infantil";
 import { avaliarC3Gestacao } from "@/lib/indicadores/c3-gestacao";
@@ -342,9 +345,50 @@ export async function GET(request: Request) {
       .collection("ubs")
       .doc(ubsId);
 
-    // Antes de reconstruir todo o histórico, verificamos apenas qual é a
-    // importação PEC mais recente. Se ela não mudou, reutilizamos o resultado
-    // já calculado em memória e evitamos milhares de leituras do Firestore.
+    /*
+     * Primeiro tentamos o cache específico da situação dos pacientes.
+     *
+     * A importação PEC já calcula a situação completa e grava
+     * o resultado em cacheSituacaoPacientes/atual.
+     *
+     * Quando esse snapshot contém a lista detalhada de pacientes,
+     * respondemos esta consulta com uma única leitura do cache
+     * específico, sem precisar ler o cacheDashboard completo.
+     */
+    const cacheSituacaoPacientes =
+      await buscarCacheSituacaoPacientes(ubsId);
+
+    const situacaoCacheNovo =
+      cacheSituacaoPacientes?.dados;
+
+    if (
+      situacaoCacheNovo &&
+      typeof situacaoCacheNovo === "object" &&
+      !Array.isArray(situacaoCacheNovo)
+    ) {
+      const pacientesCacheNovo = Array.isArray(
+        (situacaoCacheNovo as Record<string, unknown>).pacientes,
+      )
+        ? ((situacaoCacheNovo as Record<string, unknown>)
+            .pacientes as PacienteSituacao[])
+        : null;
+
+      if (pacientesCacheNovo) {
+        const respostaCacheNovo: RespostaSituacao = {
+          sucesso: true,
+          total: pacientesCacheNovo.length,
+          pacientes: pacientesCacheNovo,
+        };
+
+        return NextResponse.json(respostaCacheNovo);
+      }
+    }
+
+    /*
+     * Fallback de segurança:
+     * se o cache persistido ainda não possuir a lista detalhada,
+     * mantemos o fluxo anterior de reconstrução.
+     */
     const ultimaImportacaoSnapshot = await ubsRef
       .collection("importacoesPEC")
       .orderBy("criadoEm", "desc")

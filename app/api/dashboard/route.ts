@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { adminAuth, adminDb } from "@/lib/firebase-admin";
-import { buscarCacheDashboard } from "@/lib/indicadores/cache-dashboard";
+import {
+  buscarCacheDashboard,
+  buscarCacheSituacaoPacientes,
+} from "@/lib/indicadores/cache-dashboard";
 
 export const runtime = "nodejs";
 
@@ -8,7 +11,7 @@ export const runtime = "nodejs";
  * Endpoint único do Dashboard.
  *
  * Esta rota não recalcula indicadores e não varre pacientes.
- * Ela lê somente o snapshot consolidado do Dashboard.
+ * Ela lê somente os snapshots consolidados.
  *
  * Enquanto a migração estiver acontecendo, as APIs antigas
  * continuam funcionando separadamente.
@@ -62,7 +65,39 @@ export async function GET(request: Request) {
       );
     }
 
-    const cache = await buscarCacheDashboard(usuario.ubsId);
+    const ubsId = usuario.ubsId;
+
+    const ubsRef = adminDb
+      .collection("ubs")
+      .doc(ubsId);
+
+    const [cache, cacheSituacaoPacientes, ubsSnap] =
+      await Promise.all([
+        buscarCacheDashboard(ubsId),
+        buscarCacheSituacaoPacientes(ubsId),
+        ubsRef.get(),
+      ]);
+
+    if (!ubsSnap.exists) {
+      return NextResponse.json(
+        {
+          sucesso: false,
+          mensagem: "UBS não encontrada.",
+        },
+        { status: 404 },
+      );
+    }
+
+    const ubs = ubsSnap.data();
+
+    const pacientes = Number(ubs?.totalPacientes ?? 0);
+
+    const acsSnapshot = await ubsRef
+      .collection("acs")
+      .where("ativo", "==", true)
+      .get();
+
+    const acsAtivos = acsSnapshot.size;
 
     if (!cache) {
       return NextResponse.json({
@@ -72,6 +107,8 @@ export async function GET(request: Request) {
         competencia: null,
         atualizadoEm: null,
         dados: {},
+        acsAtivos,
+        pacientes,
         mensagem:
           "Ainda não existe um snapshot consolidado do Dashboard. Ele será criado após o processamento das importações.",
       });
@@ -96,13 +133,59 @@ export async function GET(request: Request) {
       atualizadoEm = cache.atualizadoEm.toDate().toISOString();
     }
 
+    /**
+     * A situação detalhada dos pacientes deixou de fazer parte
+     * do cache principal do Dashboard.
+     *
+     * Aqui mantemos somente os números necessários para os cards
+     * e demais resumos da tela principal.
+     */
+    const situacaoCache = cacheSituacaoPacientes?.dados;
+
+    const situacaoPacientes =
+      situacaoCache &&
+      typeof situacaoCache === "object" &&
+      !Array.isArray(situacaoCache)
+        ? {
+            totalPacientes: Number(
+              situacaoCache.totalPacientes ?? pacientes,
+            ),
+            semNenhumRegistro: Number(
+              situacaoCache.semNenhumRegistro ?? 0,
+            ),
+            comIndicadoresPendentes: Number(
+              situacaoCache.comIndicadoresPendentes ?? 0,
+            ),
+            comIndicadoresConcluidos: Number(
+              situacaoCache.comIndicadoresConcluidos ?? 0,
+            ),
+            comRegistroSemIndicadorAplicavel: Number(
+              situacaoCache.comRegistroSemIndicadorAplicavel ?? 0,
+            ),
+            indicadoresConcluidosPercentual: Number(
+              situacaoCache.indicadoresConcluidosPercentual ?? 0,
+            ),
+          }
+        : null;
+
+    const dados = {
+      ...cache.dados,
+      ...(situacaoPacientes
+        ? {
+            situacaopacientes: situacaoPacientes,
+          }
+        : {}),
+    };
+
     return NextResponse.json({
       sucesso: true,
       possuiDados: true,
       versaoDados: cache.versaoDados,
       competencia: cache.competencia,
       atualizadoEm,
-      dados: cache.dados,
+      dados,
+      acsAtivos,
+      pacientes,
     });
   } catch (error) {
     console.error(

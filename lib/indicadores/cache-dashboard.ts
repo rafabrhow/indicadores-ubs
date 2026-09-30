@@ -162,3 +162,97 @@ export async function atualizarIndicadorCacheDashboard(
 
   return novaVersao;
 }
+
+
+/**
+ * Snapshot separado da Situação dos Pacientes.
+ *
+ * A lista detalhada de pacientes não deve ficar dentro do
+ * cache principal do Dashboard.
+ */
+export type CacheSituacaoPacientes = {
+  versaoDados: number;
+  atualizadoEm: Timestamp | FieldValue | null;
+  dados: Record<string, unknown>;
+};
+
+function referenciaCacheSituacaoPacientes(ubsId: string) {
+  if (!ubsId.trim()) {
+    throw new Error("ubsId obrigatório.");
+  }
+
+  return adminDb
+    .collection("ubs")
+    .doc(ubsId)
+    .collection("cacheSituacaoPacientes")
+    .doc("atual");
+}
+
+/**
+ * Lê o snapshot separado da Situação dos Pacientes.
+ * Esta operação consulta somente um documento.
+ */
+export async function buscarCacheSituacaoPacientes(
+  ubsId: string,
+): Promise<CacheSituacaoPacientes | null> {
+  const snapshot =
+    await referenciaCacheSituacaoPacientes(ubsId).get();
+
+  if (!snapshot.exists) {
+    return null;
+  }
+
+  const dados = snapshot.data() ?? {};
+
+  return {
+    versaoDados: Number(dados.versaoDados ?? 0),
+    atualizadoEm:
+      dados.atualizadoEm instanceof Timestamp
+        ? dados.atualizadoEm
+        : null,
+    dados:
+      dados.dados &&
+      typeof dados.dados === "object" &&
+      !Array.isArray(dados.dados)
+        ? (dados.dados as Record<string, unknown>)
+        : {},
+  };
+}
+
+/**
+ * Salva o snapshot separado da Situação dos Pacientes.
+ *
+ * A versão é incrementada para permitir que o cliente identifique
+ * quando uma nova situação foi calculada.
+ */
+export async function salvarCacheSituacaoPacientes(
+  ubsId: string,
+  dados: Record<string, unknown>,
+): Promise<number> {
+  const referencia =
+    referenciaCacheSituacaoPacientes(ubsId);
+
+  const novaVersao = await adminDb.runTransaction(async (transaction) => {
+    const snapshot = await transaction.get(referencia);
+
+    const versaoAnterior = snapshot.exists
+      ? Number(snapshot.data()?.versaoDados ?? 0)
+      : 0;
+
+    const versao = versaoAnterior + 1;
+
+    transaction.set(
+      referencia,
+      {
+        versaoDados: versao,
+        dados,
+        atualizadoEm: FieldValue.serverTimestamp(),
+      },
+      { merge: true },
+    );
+
+    return versao;
+  });
+
+  return novaVersao;
+}

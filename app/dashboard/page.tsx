@@ -157,6 +157,46 @@ export default function DashboardPage() {
   const router = useRouter();
   const [agora, setAgora] = useState<Date | null>(null);
 
+  async function carregarPacientesSituacao() {
+    try {
+      setCarregandoPacientesSituacao(true);
+
+      const usuarioFirebase = auth.currentUser;
+
+      if (!usuarioFirebase) return;
+
+      const token = await usuarioFirebase.getIdToken();
+
+      const resposta = await fetch(
+        "/api/dashboard/situacao-pacientes",
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        },
+      );
+
+      const dados = await resposta.json();
+
+      if (resposta.ok && dados.sucesso) {
+        setPacientesSituacao(
+          Array.isArray(dados.pacientes)
+            ? dados.pacientes
+            : [],
+        );
+      }
+    } catch (error) {
+      console.error(
+        "Erro ao carregar situação detalhada dos pacientes:",
+        error,
+      );
+
+      setPacientesSituacao([]);
+    } finally {
+      setCarregandoPacientesSituacao(false);
+    }
+  }
+
   useEffect(() => {
     const atualizar = () => setAgora(new Date());
 
@@ -235,7 +275,6 @@ export default function DashboardPage() {
   const [carregandoBucal, setCarregandoBucal] = useState(false);
   const [resumoDashboard, setResumoDashboard] = useState<ResumoDashboard | null>(null);
   const [modalCadastrarACS, setModalCadastrarACS] = useState(false);
-  const [carregandoResumoDashboard, setCarregandoResumoDashboard] = useState(false);
   const [situacaoPacientes, setSituacaoPacientes] =
     useState<ResumoSituacaoPacientes | null>(null);
   const [carregandoSituacaoPacientes, setCarregandoSituacaoPacientes] =
@@ -292,50 +331,6 @@ const [modalSituacaoAberto, setModalSituacaoAberto] = useState(false);
      * 
      */
 
-    async function carregarPacientesSituacao() {
-  try {
-    setCarregandoPacientesSituacao(true);
-
-    const usuarioFirebase = auth.currentUser;
-
-    if (!usuarioFirebase) return;
-
-    const token = await usuarioFirebase.getIdToken();
-
-    const resposta = await fetch(
-      "/api/dashboard/situacao-pacientes",
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      },
-    );
-
-    const dados = await resposta.json();
-
-    if (!cancelado && resposta.ok && dados.sucesso) {
-      setPacientesSituacao(
-        Array.isArray(dados.pacientes)
-          ? dados.pacientes
-          : [],
-      );
-    }
-  } catch (error) {
-    console.error(
-      "Erro ao carregar situação detalhada dos pacientes:",
-      error,
-    );
-
-    if (!cancelado) {
-      setPacientesSituacao([]);
-    }
-  } finally {
-    if (!cancelado) {
-      setCarregandoPacientesSituacao(false);
-    }
-  }
-}
-
     async function carregarDashboardCache() {
       try {
         setCarregandoSituacaoPacientes(true);
@@ -362,6 +357,11 @@ const [modalSituacaoAberto, setModalSituacaoAberto] = useState(false);
         const dados = await resposta.json();
 
         if (!cancelado && resposta.ok && dados.sucesso) {
+          setResumoDashboard({
+            acsAtivos: Number(dados.acsAtivos ?? 0),
+            pacientes: Number(dados.pacientes ?? 0),
+          });
+
           const snapshot = dados.dados ?? {};
 
           // ---------------------------------------------------------
@@ -654,35 +654,6 @@ const [modalSituacaoAberto, setModalSituacaoAberto] = useState(false);
       }
     }
 
-    async function carregarResumoDashboard() {
-      try {
-        setCarregandoResumoDashboard(true);
-
-        const usuarioFirebase = auth.currentUser;
-        if (!usuarioFirebase) return;
-
-        const token = await usuarioFirebase.getIdToken();
-
-        const resposta = await fetch("/api/dashboard/resumo", {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
-
-        const dados = await resposta.json();
-
-        if (!cancelado && resposta.ok && dados.sucesso) {
-          setResumoDashboard({
-            acsAtivos: Number(dados.acsAtivos ?? 0),
-            pacientes: Number(dados.pacientes ?? 0),
-          });
-        }
-      } catch (error) {
-        console.error("Erro ao carregar resumo do dashboard:", error);
-      } finally {
-        if (!cancelado) setCarregandoResumoDashboard(false);
-      }
-    }
 
    /**
  * C2 — Desenvolvimento Infantil é lido exclusivamente do snapshot
@@ -695,9 +666,12 @@ const [modalSituacaoAberto, setModalSituacaoAberto] = useState(false);
  * Assim, abrir o Dashboard não recalcula o indicador nem consulta
  * /api/indicadores/c2.
  */
-    carregarResumoDashboard();
     carregarDashboardCache();
-    carregarPacientesSituacao();
+
+    // A situação detalhada dos pacientes é carregada somente quando
+    // a enfermeira abre uma das categorias.
+    // Isso evita reconstruir todo o histórico de pacientes
+    // a cada abertura do Dashboard.
 
     return () => {
       cancelado = true;
@@ -1032,7 +1006,7 @@ const [modalSituacaoAberto, setModalSituacaoAberto] = useState(false);
                 />
 
                 <p className="text-3xl font-bold leading-none">
-                  {carregandoResumoDashboard ? "..." : resumoDashboard?.pacientes ?? "—"}
+                  {resumoDashboard?.pacientes ?? "—"}
                 </p>
 
                 <p className="mt-2 text-[10px] font-medium">
@@ -1169,6 +1143,7 @@ const [modalSituacaoAberto, setModalSituacaoAberto] = useState(false);
                         }
 
                         setModalSituacaoAberto(true);
+                        void carregarPacientesSituacao();
                       }}
   className="w-full text-left transition-opacity hover:opacity-80"
 >
@@ -1255,7 +1230,13 @@ const [modalSituacaoAberto, setModalSituacaoAberto] = useState(false);
                 />
 
                 <p className="mt-2 text-[9px] text-gray-400">
-                  Nenhum ACS vinculado ainda.
+                  {resumoDashboard?.acsAtivos
+                    ? `${resumoDashboard.acsAtivos} ACS ${
+                        resumoDashboard.acsAtivos === 1
+                          ? "vinculado"
+                          : "vinculados"
+                      }`
+                    : "Nenhum ACS vinculado ainda."}
                 </p>
 
                 <button
