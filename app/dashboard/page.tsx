@@ -170,8 +170,10 @@ export default function DashboardPage() {
       const resposta = await fetch(
         "/api/dashboard/situacao-pacientes",
         {
+          cache: "no-store",
           headers: {
             Authorization: `Bearer ${token}`,
+            "Cache-Control": "no-cache",
           },
         },
       );
@@ -285,10 +287,16 @@ export default function DashboardPage() {
 type PacienteSituacao = {
   id: string;
   nome: string;
+  categoria:
+    | "sem_nenhum_registro"
+    | "indicadores_pendentes"
+    | "indicadores_concluidos"
+    | "registro_sem_indicador_aplicavel";
   indicadores: {
     codigo: "C2" | "C3" | "C4" | "C5" | "C6" | "C7";
     status: "pendente" | "concluido";
   }[];
+  indicadoresSemRegistro?: Array<"C2" | "C3" | "C4" | "C5" | "C6" | "C7">;
 };
 
 const [pacientesSituacao, setPacientesSituacao] = useState<
@@ -298,7 +306,7 @@ const [carregandoPacientesSituacao, setCarregandoPacientesSituacao] =
   useState(false);
 const [modalSituacaoAberto, setModalSituacaoAberto] = useState(false);
   const [situacaoSelecionada, setSituacaoSelecionada] = useState<
-    "sem-indicador" | "pendente" | "concluido" | null
+    "sem-registro" | "sem-indicador" | "pendente" | "concluido" | null
   >(null);
   const [pacienteSituacaoSelecionado, setPacienteSituacaoSelecionado] =
     useState<PacienteSituacao | null>(null);
@@ -349,8 +357,10 @@ const [modalSituacaoAberto, setModalSituacaoAberto] = useState(false);
         const token = await usuarioFirebase.getIdToken();
 
         const resposta = await fetch("/api/dashboard", {
+          cache: "no-store",
           headers: {
             Authorization: `Bearer ${token}`,
+            "Cache-Control": "no-cache",
           },
         });
 
@@ -367,31 +377,80 @@ const [modalSituacaoAberto, setModalSituacaoAberto] = useState(false);
           // ---------------------------------------------------------
           // Situação dos pacientes
           // ---------------------------------------------------------
-          const situacao =
-            snapshot.situacaopacientes &&
-            typeof snapshot.situacaopacientes === "object" &&
-            !Array.isArray(snapshot.situacaopacientes)
-              ? snapshot.situacaopacientes
-              : null;
+          // A lista detalhada é a fonte única da verdade para as
+          // categorias dos pacientes. Assim, o card e o modal usam
+          // exatamente a mesma classificação.
+          try {
+            const respostaSituacao = await fetch(
+              "/api/dashboard/situacao-pacientes",
+              {
+                cache: "no-store",
+                headers: {
+                  Authorization: `Bearer ${token}`,
+                  "Cache-Control": "no-cache",
+                },
+              },
+            );
 
-          if (situacao) {
-            setSituacaoPacientes({
-              totalPacientes: Number(situacao.totalPacientes ?? 0),
-              semNenhumRegistro: Number(situacao.semNenhumRegistro ?? 0),
-              comIndicadoresPendentes: Number(
-                situacao.comIndicadoresPendentes ?? 0,
-              ),
-              comIndicadoresConcluidos: Number(
-                situacao.comIndicadoresConcluidos ?? 0,
-              ),
-              comRegistroSemIndicadorAplicavel: Number(
-                situacao.comRegistroSemIndicadorAplicavel ?? 0,
-              ),
-              indicadoresConcluidosPercentual: Number(
-                situacao.indicadoresConcluidosPercentual ?? 0,
-              ),
-            });
-          } else {
+            const dadosSituacao = await respostaSituacao.json();
+
+            if (
+              !cancelado &&
+              respostaSituacao.ok &&
+              dadosSituacao.sucesso &&
+              Array.isArray(dadosSituacao.pacientes)
+            ) {
+              const pacientesDetalhados =
+                dadosSituacao.pacientes as PacienteSituacao[];
+
+              const semNenhumRegistro = pacientesDetalhados.filter(
+                (p) => p.categoria === "sem_nenhum_registro",
+              ).length;
+
+              const comIndicadoresPendentes = pacientesDetalhados.filter(
+                (p) => p.categoria === "indicadores_pendentes",
+              ).length;
+
+              const comIndicadoresConcluidos = pacientesDetalhados.filter(
+                (p) => p.categoria === "indicadores_concluidos",
+              ).length;
+
+              const comRegistroSemIndicadorAplicavel =
+                pacientesDetalhados.filter(
+                  (p) =>
+                    p.categoria ===
+                    "registro_sem_indicador_aplicavel",
+                ).length;
+
+              const totalPacientes = pacientesDetalhados.length;
+
+              setPacientesSituacao(pacientesDetalhados);
+
+              setSituacaoPacientes({
+                totalPacientes,
+                semNenhumRegistro,
+                comIndicadoresPendentes,
+                comIndicadoresConcluidos,
+                comRegistroSemIndicadorAplicavel,
+                indicadoresConcluidosPercentual:
+                  totalPacientes > 0
+                    ? Number(
+                        (
+                          (comIndicadoresConcluidos / totalPacientes) *
+                          100
+                        ).toFixed(1),
+                      )
+                    : 0,
+              });
+            } else {
+              setSituacaoPacientes(null);
+            }
+          } catch (error) {
+            console.error(
+              "Erro ao carregar situação detalhada para o Dashboard:",
+              error,
+            );
+
             setSituacaoPacientes(null);
           }
 
@@ -1103,6 +1162,13 @@ const [modalSituacaoAberto, setModalSituacaoAberto] = useState(false);
 
                 {[
                   {
+                    label: "Sem nenhum registro",
+                    valor: situacaoPacientes?.semNenhumRegistro ?? 0,
+                    corTexto: "text-[#7B8794]",
+                    corFundo: "bg-[#E8EDF2]",
+                    corBarra: "bg-[#7B8794]",
+                  },
+                  {
                     label: "Sem indicador C2–C7 aplicável",
                     valor:
                       situacaoPacientes?.comRegistroSemIndicadorAplicavel ?? 0,
@@ -1134,7 +1200,9 @@ const [modalSituacaoAberto, setModalSituacaoAberto] = useState(false);
   key={item.label}
   type="button"
   onClick={() => {
-                        if (item.label === "Sem indicador C2–C7 aplicável") {
+                        if (item.label === "Sem nenhum registro") {
+                          setSituacaoSelecionada("sem-registro");
+                        } else if (item.label === "Sem indicador C2–C7 aplicável") {
                           setSituacaoSelecionada("sem-indicador");
                         } else if (item.label === "Com indicadores pendentes") {
                           setSituacaoSelecionada("pendente");
@@ -1688,28 +1756,32 @@ const [modalSituacaoAberto, setModalSituacaoAberto] = useState(false);
               ) : (
                 (() => {
                   const pacientesFiltrados =
-                    situacaoSelecionada === "pendente"
-                      ? pacientesSituacao.filter((p) =>
-                          p.indicadores.some((i) => i.status === "pendente"),
+                    situacaoSelecionada === "sem-registro"
+                      ? pacientesSituacao.filter(
+                          (p) => p.categoria === "sem_nenhum_registro",
                         )
-                      : situacaoSelecionada === "concluido"
+                      : situacaoSelecionada === "pendente"
                         ? pacientesSituacao.filter(
-                            (p) =>
-                              p.indicadores.length > 0 &&
-                              p.indicadores.every(
-                                (i) => i.status === "concluido",
-                              ),
+                            (p) => p.categoria === "indicadores_pendentes",
                           )
-                        : pacientesSituacao.filter(
-                            (p) => p.indicadores.length === 0,
-                          );
+                        : situacaoSelecionada === "concluido"
+                          ? pacientesSituacao.filter(
+                              (p) => p.categoria === "indicadores_concluidos",
+                            )
+                          : pacientesSituacao.filter(
+                              (p) =>
+                                p.categoria ===
+                                "registro_sem_indicador_aplicavel",
+                            );
 
                   const titulo =
-                    situacaoSelecionada === "pendente"
-                      ? "Pacientes com indicadores pendentes"
-                      : situacaoSelecionada === "concluido"
-                        ? "Pacientes com indicadores concluídos"
-                        : "Pacientes sem indicador C2–C7 aplicável";
+                    situacaoSelecionada === "sem-registro"
+                      ? "Pacientes sem nenhum registro"
+                      : situacaoSelecionada === "pendente"
+                        ? "Pacientes com indicadores pendentes"
+                        : situacaoSelecionada === "concluido"
+                          ? "Pacientes com indicadores concluídos"
+                          : "Pacientes sem indicador C2–C7 aplicável";
                   return (
                     <>
                       <div className="mb-3 flex items-center justify-between"><p className="text-[10px] font-bold text-[#062B63]">{titulo}</p><span className="rounded-full bg-[#EAF4FF] px-2 py-1 text-[8px] font-bold text-[#003B8E]">{pacientesFiltrados.length}</span></div>
@@ -1804,6 +1876,10 @@ const [modalSituacaoAberto, setModalSituacaoAberto] = useState(false);
                       pacienteSituacaoSelecionado.indicadores.find(
                         (item) => item.codigo === codigo,
                       );
+                    const semRegistro =
+                      pacienteSituacaoSelecionado.indicadoresSemRegistro?.includes(
+                        codigo,
+                      ) ?? false;
 
                     return (
                       <div
@@ -1820,14 +1896,18 @@ const [modalSituacaoAberto, setModalSituacaoAberto] = useState(false);
                               ? "bg-[#FFF4C2] text-[#9A7800]"
                               : indicador?.status === "concluido"
                                 ? "bg-[#DDF7EA] text-[#007A2E]"
-                                : "bg-gray-200 text-gray-500"
+                                : semRegistro
+                                  ? "bg-[#E8EDF2] text-[#5F6B76]"
+                                  : "bg-gray-200 text-gray-500"
                           }`}
                         >
                           {indicador?.status === "pendente"
                             ? "Pendente"
                             : indicador?.status === "concluido"
                               ? "Concluído"
-                              : "Não aplicável"}
+                              : semRegistro
+                                ? "Sem registro"
+                                : "Não aplicável"}
                         </span>
                       </div>
                     );

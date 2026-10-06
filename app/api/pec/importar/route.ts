@@ -1,41 +1,74 @@
 import { NextResponse } from "next/server";
-import { FieldValue, FieldPath, type DocumentReference } from "firebase-admin/firestore";
+import {
+  FieldPath,
+  FieldValue,
+  type DocumentReference,
+} from "firebase-admin/firestore";
+
 import { adminAuth, adminDb } from "@/lib/firebase-admin";
+
 import {
   analisarCSVPEC,
   classificarOrigemTematica,
   ehFonteC5HipertensaoAtiva,
   identificarPaciente,
   separarDadosBase,
+  type LinhaPEC,
 } from "@/lib/pec/parser";
+
 import { analisarRelatorioC1 } from "@/lib/indicadores/c1-relatorio";
+
 import { salvarResultadoIndicadorMensal } from "@/lib/indicadores/persistencia-indicadores-mensais";
+
 import {
   atualizarIndicadorCacheDashboard,
+  buscarCacheSituacaoPacientes,
   salvarCacheSituacaoPacientes,
 } from "@/lib/indicadores/cache-dashboard";
+
 import {
   avaliarC2Infantil,
   type ResultadoC2Infantil,
 } from "@/lib/indicadores/c2-infantil";
+
 import {
   avaliarC3Gestacao,
   type ResultadoC3Gestacao,
   type CodigoC3,
 } from "@/lib/indicadores/c3-gestacao";
+
 import {
   avaliarC4Diabetes,
   type ResultadoC4Diabetes,
 } from "@/lib/indicadores/c4-diabetes";
+
 import {
   avaliarC5Hipertensao,
   type ResultadoC5Hipertensao,
 } from "@/lib/indicadores/c5-hipertensao";
-import { avaliarC6 } from "@/lib/indicadores/c6-idoso";
-import { avaliarC7 } from "@/lib/indicadores/c7-mulher";
-import { avaliarBucal } from "@/lib/indicadores/bucal";
-import { calcularSituacaoPacientes } from "@/lib/indicadores/situacao-pacientes";
 
+import { avaliarC6 } from "@/lib/indicadores/c6-idoso";
+
+import {
+  avaliarC7,
+  type PraticaC7,
+} from "@/lib/indicadores/c7-mulher";
+
+import {
+  buscarCacheC7,
+  buscarPacientesCacheC7,
+  removerPacientesCacheC7,
+  salvarCacheC7,
+  salvarPacientesCacheC7,
+  type CacheC7Paciente,
+} from "@/lib/indicadores/cache-c7";
+
+import { avaliarBucal } from "@/lib/indicadores/bucal";
+
+import {
+  calcularSituacaoPacientes,
+  calcularSituacaoPacientesAfetados,
+} from "@/lib/indicadores/situacao-pacientes";
 export const runtime = "nodejs";
 
 function normalizarTextoC1(valor: string): string {
@@ -240,6 +273,91 @@ function possuiValorC7(valor: unknown): boolean {
     String(valor).trim() !== ""
   );
 }
+const CAMPOS_ORIGEM_C7 = {
+  nome: [
+    "Nome",
+  ],
+
+  sexo: [
+    "Sexo",
+  ],
+
+  identidadeGenero: [
+    "Identidade de gênero",
+    "Identidade genero",
+  ],
+
+  dataNascimento: [
+    "Data de nascimento",
+  ],
+
+  idade: [
+    "Idade",
+  ],
+
+  coloSolicitacao: [
+    "Exame de rastreamento de câncer de colo de útero data última solicitação",
+  ],
+
+  coloAvaliacao: [
+    "Exame de rastreamento de câncer de colo de útero data última avaliação",
+  ],
+
+  hpv: [
+    "HPV",
+  ],
+
+  consultaSaudeSexual: [
+    "Data da última consulta de saúde sexual e reprodutiva",
+  ],
+
+  mamaSolicitacao: [
+    "Exame de rastreamento de câncer de mama data Última solicitação",
+  ],
+
+  mamaRealizacao: [
+    "Exame de rastreamento de câncer de mama data Última realização",
+  ],
+
+  mamaAvaliacao: [
+    "Exame de rastreamento de câncer de mama data Última avaliação",
+  ],
+} as const;
+
+type OrigemC7 = Partial<
+  Record<keyof typeof CAMPOS_ORIGEM_C7, string>
+>;
+
+function normalizarChaveC7(valor: string): string {
+  return normalizarC7(valor);
+}
+
+function encontrarValorC7(
+  registro: Record<string, unknown>,
+  aliases: readonly string[],
+): unknown {
+  const entradas = Object.entries(registro);
+
+  for (const alias of aliases) {
+    const aliasNormalizado =
+      normalizarChaveC7(alias);
+
+    const entrada = entradas.find(
+      ([chave]) =>
+        normalizarChaveC7(chave) ===
+        aliasNormalizado,
+    );
+
+    if (
+      entrada &&
+      possuiValorC7(entrada[1])
+    ) {
+      return entrada[1];
+    }
+  }
+
+  return undefined;
+}
 
 function juntarRegistroC7(
   registro: Record<string, unknown>,
@@ -263,14 +381,23 @@ function juntarRegistroC7(
   };
 }
 
-function consolidarRegistrosC7(
+ function consolidarRegistrosC7(
   registros: Array<{
     id: string;
     criadoEm: number;
+    importacaoId?: string;
     dados: Record<string, unknown>;
   }>,
 ): Record<string, unknown>[] {
-  const grupos = new Map<string, Record<string, unknown>>();
+  const grupos = new Map<
+    string,
+    Record<string, unknown>
+  >();
+
+  const origens = new Map<
+    string,
+    OrigemC7
+  >();
 
   for (const item of registros) {
     const registro: Record<string, unknown> = {
@@ -281,12 +408,15 @@ function consolidarRegistrosC7(
     const cpf = normalizarC7(
       registro.CPF ?? registro.cpf ?? "",
     );
+
     const cns = normalizarC7(
       registro.CNS ?? registro.cns ?? "",
     );
+
     const nome = normalizarC7(
       registro.Nome ?? registro.nome ?? "",
     );
+
     const nascimento = normalizarC7(
       registro["Data de nascimento"] ??
         registro.dataNascimento ??
@@ -304,18 +434,91 @@ function consolidarRegistrosC7(
     const existente = grupos.get(chave);
 
     if (!existente) {
-      grupos.set(chave, { ...registro });
-      continue;
+      grupos.set(chave, {
+        ...registro,
+      });
+
+      origens.set(chave, {});
+
+    } else {
+      for (const [
+        campo,
+        valor,
+      ] of Object.entries(registro)) {
+        if (
+          !possuiValorC7(
+            existente[campo],
+          ) &&
+          possuiValorC7(valor)
+        ) {
+          existente[campo] = valor;
+        }
+      }
     }
 
-    for (const [campo, valor] of Object.entries(registro)) {
-      if (!possuiValorC7(existente[campo]) && possuiValorC7(valor)) {
-        existente[campo] = valor;
+    /*
+     * A origem segue a mesma regra da consolidação:
+     *
+     * o primeiro valor preenchido encontrado,
+     * começando pela importação mais nova,
+     * passa a ser a origem daquele campo.
+     */
+    const origemAtual =
+      origens.get(chave) ?? {};
+
+    for (const [
+      campoOrigem,
+      aliases,
+    ] of Object.entries(
+      CAMPOS_ORIGEM_C7,
+    ) as Array<
+      [
+        keyof typeof CAMPOS_ORIGEM_C7,
+        readonly string[],
+      ]
+    >) {
+      if (
+        origemAtual[campoOrigem]
+      ) {
+        continue;
       }
+
+      const valor =
+        encontrarValorC7(
+          registro,
+          aliases,
+        );
+
+      if (
+        possuiValorC7(valor) &&
+        item.importacaoId
+      ) {
+        origemAtual[campoOrigem] =
+          item.importacaoId;
+      }
+    }
+
+    origens.set(
+      chave,
+      origemAtual,
+    );
+  }
+
+  for (const [
+    chave,
+    registro,
+  ] of grupos.entries()) {
+    const origem =
+      origens.get(chave);
+
+    if (origem) {
+      registro.__c7Origem = origem;
     }
   }
 
-  return Array.from(grupos.values());
+  return Array.from(
+    grupos.values(),
+  );
 }
 
 async function calcularC7Consolidado(
@@ -325,6 +528,8 @@ async function calcularC7Consolidado(
   competencia: string;
   quantidadeImportacoesConsideradas: number;
   quantidadeRegistrosConsolidados: number;
+  registrosConsolidados: Record<string, unknown>[];
+  importacoesPorPaciente: Map<string, string[]>;
 } | null> {
   const importacoesSnap = await ubsRef
     .collection("importacoesPEC")
@@ -339,6 +544,7 @@ async function calcularC7Consolidado(
   const registrosConsolidaveis: Array<{
     id: string;
     criadoEm: number;
+    importacaoId: string;
     dados: Record<string, unknown>;
   }> = [];
 
@@ -360,6 +566,7 @@ async function calcularC7Consolidado(
       registrosConsolidaveis.push({
         id: registroDoc.id,
         criadoEm,
+        importacaoId: importacao.id,
         dados: juntarRegistroC7(registroDoc.data()),
       });
     }
@@ -370,6 +577,16 @@ async function calcularC7Consolidado(
   }
 
   const registros = consolidarRegistrosC7(registrosConsolidaveis);
+
+  const importacoesPorPaciente = new Map<string, Set<string>>();
+
+  for (const item of registrosConsolidaveis) {
+    if (!item.importacaoId) continue;
+
+    const atual = importacoesPorPaciente.get(item.id) ?? new Set<string>();
+    atual.add(item.importacaoId);
+    importacoesPorPaciente.set(item.id, atual);
+  }
 
   const referencia =
     referenciaMillis > 0
@@ -383,7 +600,1178 @@ async function calcularC7Consolidado(
     competencia: competenciaC7(referencia),
     quantidadeImportacoesConsideradas: importacoesSnap.docs.length,
     quantidadeRegistrosConsolidados: registros.length,
+    registrosConsolidados: registros,
+    importacoesPorPaciente: new Map(
+      Array.from(importacoesPorPaciente.entries()).map(([id, ids]) => [
+        id,
+        Array.from(ids),
+      ]),
+    ),
   };
+}
+
+function mesclarRegistroC7(
+  anterior: Record<string, unknown>,
+  novo: Record<string, unknown>,
+  importacaoId?: string,
+): Record<string, unknown> {
+  const resultado = { ...anterior };
+
+  const origensAnteriores =
+    anterior.__c7Origem &&
+    typeof anterior.__c7Origem === "object" &&
+    !Array.isArray(anterior.__c7Origem)
+      ? {
+          ...(anterior.__c7Origem as OrigemC7),
+        }
+      : {};
+
+  for (const [campo, valor] of Object.entries(novo)) {
+    if (campo === "__c7Origem") {
+      continue;
+    }
+
+    if (possuiValorC7(valor)) {
+      resultado[campo] = valor;
+
+      /*
+       * Se o campo pertence ao conjunto usado pelo C7,
+       * a importação atual passa a ser sua origem.
+       */
+      for (const [
+        campoOrigem,
+        aliases,
+      ] of Object.entries(
+        CAMPOS_ORIGEM_C7,
+      ) as Array<
+        [
+          keyof typeof CAMPOS_ORIGEM_C7,
+          readonly string[],
+        ]
+      >) {
+        const campoNormalizado =
+          normalizarChaveC7(campo);
+
+        const corresponde =
+          aliases.some(
+            (alias) =>
+              normalizarChaveC7(alias) ===
+              campoNormalizado,
+          );
+
+        if (
+          corresponde &&
+          importacaoId
+        ) {
+          origensAnteriores[
+            campoOrigem
+          ] = importacaoId;
+
+          break;
+        }
+      }
+    }
+  }
+
+  resultado.__c7Origem =
+    origensAnteriores;
+
+  return resultado;
+}
+
+const PESOS_C7 = {
+  A: 20,
+  B: 30,
+  C: 30,
+  D: 20,
+} as const;
+
+function contribuicaoPacienteC7(avaliacao: any | null) {
+  if (!avaliacao || typeof avaliacao !== "object") {
+    return {
+      elegivel: false,
+      praticas: {
+        A: { elegivel: false, atingida: false },
+        B: { elegivel: false, atingida: false },
+        C: { elegivel: false, atingida: false },
+        D: { elegivel: false, atingida: false },
+      },
+    };
+  }
+
+  const idade = Number(avaliacao.idade ?? 0);
+  const elegivel = idade >= 9 && idade <= 69;
+
+  return {
+    elegivel,
+    praticas: {
+      A: { elegivel: idade >= 25 && idade <= 64, atingida: Boolean(avaliacao.praticas?.A) },
+      B: { elegivel: idade >= 9 && idade <= 14, atingida: Boolean(avaliacao.praticas?.B) },
+      C: { elegivel: idade >= 14 && idade <= 69, atingida: Boolean(avaliacao.praticas?.C) },
+      D: { elegivel: idade >= 50 && idade <= 69, atingida: Boolean(avaliacao.praticas?.D) },
+    },
+  };
+}
+
+function atualizarResumoAgregadoC7(
+  resultadoAnterior: Record<string, unknown>,
+  alteracoes: Array<{ anterior: any | null; atual: any | null }>,
+) {
+  const praticasEntrada =
+    resultadoAnterior.praticas &&
+    typeof resultadoAnterior.praticas === "object"
+      ? (resultadoAnterior.praticas as Record<string, any>)
+      : {};
+
+  let totalElegiveis = Number(resultadoAnterior.totalElegiveis ?? 0);
+  const contadores = {} as Record<"A" | "B" | "C" | "D", { elegiveis: number; atingidos: number }>;
+
+  for (const codigo of ["A", "B", "C", "D"] as const) {
+    const pratica = praticasEntrada[codigo] ?? {};
+    contadores[codigo] = {
+      elegiveis: Number(pratica.elegiveis ?? 0),
+      atingidos: Number(pratica.atingidos ?? 0),
+    };
+  }
+
+  for (const alteracao of alteracoes) {
+    const anterior = contribuicaoPacienteC7(alteracao.anterior);
+    const atual = contribuicaoPacienteC7(alteracao.atual);
+
+    if (anterior.elegivel) totalElegiveis--;
+    if (atual.elegivel) totalElegiveis++;
+
+    for (const codigo of ["A", "B", "C", "D"] as const) {
+      if (anterior.praticas[codigo].elegivel) contadores[codigo].elegiveis--;
+      if (atual.praticas[codigo].elegivel) contadores[codigo].elegiveis++;
+      if (anterior.praticas[codigo].elegivel && anterior.praticas[codigo].atingida) contadores[codigo].atingidos--;
+      if (atual.praticas[codigo].elegivel && atual.praticas[codigo].atingida) contadores[codigo].atingidos++;
+    }
+  }
+
+  totalElegiveis = Math.max(0, totalElegiveis);
+
+  const praticas = {} as Record<"A" | "B" | "C" | "D", PraticaC7>;
+
+  for (const codigo of ["A", "B", "C", "D"] as const) {
+    const base = praticasEntrada[codigo] ?? {};
+    const { elegiveis, atingidos } = contadores[codigo];
+    const disponivel = elegiveis > 0;
+    const percentual = disponivel
+      ? (atingidos / elegiveis) * 100
+      : null;
+    const pontos = disponivel
+      ? (atingidos / elegiveis) * PESOS_C7[codigo]
+      : null;
+
+    praticas[codigo] = {
+      ...base,
+      codigo,
+      peso: PESOS_C7[codigo],
+      elegiveis,
+      atingidos,
+      percentual,
+      pontos,
+      disponivel,
+    } as PraticaC7;
+  }
+
+  const praticasDisponiveis = Object.values(praticas).filter((p: any) => p.disponivel);
+  const completo = praticasDisponiveis.length === 4;
+  const pontuacaoParcial = praticasDisponiveis.reduce(
+    (soma: number, pratica: any) => soma + (pratica.pontos ?? 0),
+    0,
+  );
+  const pontosDisponiveis = praticasDisponiveis.reduce(
+    (soma: number, pratica: any) => soma + pratica.peso,
+    0,
+  );
+
+  return {
+    ...resultadoAnterior,
+    totalElegiveis,
+    pontuacao: completo ? pontuacaoParcial : null,
+    pontuacaoParcial,
+    pontosDisponiveis,
+    classificacao: completo
+      ? pontuacaoParcial > 75
+        ? "Ótimo"
+        : pontuacaoParcial > 50
+          ? "Bom"
+          : pontuacaoParcial > 25
+            ? "Suficiente"
+            : "Regular"
+      : "Indisponível",
+    completo,
+    praticas,
+  };
+}
+
+
+async function atualizarC7ComCache(
+  ubsId: string,
+  ubsRef: DocumentReference,
+  importacaoAtualId: string,
+  novaReferencia: Date,
+  linhasImportacao: LinhaPEC[],
+  pacientesIdsImportacao: string[],
+): Promise<{
+  resultado: ReturnType<typeof avaliarC7>;
+  competencia: string;
+  quantidadeImportacoesConsideradas: number;
+  quantidadeRegistrosConsolidados: number;
+}> {   const inicioC7Detalhado = Date.now();
+
+  const marcarC7 = (etapa: string) => {
+    console.log(
+      `[C7 DETALHE] ${etapa}: ${Date.now() - inicioC7Detalhado}ms`,
+    );
+  };
+  const cacheAtual = await buscarCacheC7(ubsId);
+
+marcarC7(
+  `Cache principal carregado (${cacheAtual ? "existe" : "não existe"})`,
+);
+
+const importacoesIdsAtuais = cacheAtual
+  ? [
+      importacaoAtualId,
+      ...cacheAtual.importacoesIds.filter(
+        (id) => id !== importacaoAtualId,
+      ),
+    ].slice(0, 50)
+  : [importacaoAtualId];
+
+  
+
+  if (!cacheAtual) {
+  const consolidadoInicial = await calcularC7Consolidado(ubsRef);
+
+  if (!consolidadoInicial) {
+    throw new Error("Não foi possível consolidar o C7 inicial.");
+  }
+
+  const avaliacoesPorId = new Map(
+    consolidadoInicial.resultado.pacientes.map((paciente) => [
+      String(paciente.id),
+      paciente,
+    ]),
+  );
+
+  const pacientesCache: CacheC7Paciente[] =
+    consolidadoInicial.registrosConsolidados.map((registro) => {
+      const pacienteId = String(registro.id ?? "").trim();
+
+      return {
+        pacienteId,
+        dados: registro,
+        avaliacao: avaliacoesPorId.get(pacienteId) ?? null,
+        importacoesIds:
+          consolidadoInicial.importacoesPorPaciente.get(pacienteId) ?? [],
+        atualizadoEm: null,
+      };
+    });
+
+  await salvarPacientesCacheC7(ubsId, pacientesCache);
+
+  const resultadoCache = Object.fromEntries(
+    Object.entries({
+      ...consolidadoInicial.resultado,
+      pacientes: [],
+    }).filter(([, valor]) => valor !== undefined),
+  );
+
+  await salvarCacheC7(ubsId, {
+    competencia: consolidadoInicial.competencia,
+    referencia: consolidadoInicial.resultado.referencia,
+    importacoesIds: importacoesIdsAtuais,
+    quantidadeImportacoesConsideradas:
+      consolidadoInicial.quantidadeImportacoesConsideradas,
+    quantidadePacientes:
+      consolidadoInicial.resultado.pacientes.length,
+    resultado: resultadoCache,
+  });
+
+  return consolidadoInicial;
+}
+
+  const novasImportacoes = importacoesIdsAtuais.filter(
+    (id) => !cacheAtual.importacoesIds.includes(id),
+  );
+
+  const importacoesRemovidas = cacheAtual.importacoesIds.filter(
+    (id) => !importacoesIdsAtuais.includes(id),
+  );
+  console.log(
+  `[C7 JANELA] atuais=${importacoesIdsAtuais.length}, ` +
+    `novas=${novasImportacoes.length}, ` +
+    `removidas=${importacoesRemovidas.length}`,
+);
+
+  if (novasImportacoes.length === 0 && importacoesRemovidas.length === 0) {
+    const resultadoCache = {
+      ...(cacheAtual.resultado as ReturnType<typeof avaliarC7>),
+      pacientes: [],
+    };
+
+    return {
+      resultado: resultadoCache,
+      competencia: cacheAtual.competencia ?? competenciaC7(new Date()),
+      quantidadeImportacoesConsideradas:
+        cacheAtual.quantidadeImportacoesConsideradas,
+      quantidadeRegistrosConsolidados: cacheAtual.quantidadePacientes,
+    };
+  }
+
+  
+
+  const novosRegistrosPorPaciente = new Map<
+    string,
+    Record<string, unknown>
+  >();
+
+  for (const linha of linhasImportacao) {
+    const pacienteId = identificarPaciente(linha);
+    const { base, especificos } = separarDadosBase(linha);
+
+    novosRegistrosPorPaciente.set(pacienteId, {
+      ...base,
+      ...especificos,
+      ...linha,
+      dadosBase: base,
+      dadosEspecificos: especificos,
+      id: pacienteId,
+    });
+  }
+
+  const idsAfetados = new Set(pacientesIdsImportacao);
+
+const cachePacientes = new Map<string, CacheC7Paciente>();
+
+if (importacoesRemovidas.length > 0) {
+  const pacientesRef = ubsRef
+    .collection("cacheC7")
+    .doc("atual")
+    .collection("pacientes");
+
+  for (const importacaoId of importacoesRemovidas) {
+    const snapshot = await pacientesRef
+      .where("importacoesIds", "array-contains", importacaoId)
+      .get();
+
+    for (const documento of snapshot.docs) {
+      const dados = documento.data();
+
+      idsAfetados.add(documento.id);
+
+      cachePacientes.set(documento.id, {
+        pacienteId: documento.id,
+        dados:
+          dados.dados &&
+          typeof dados.dados === "object" &&
+          !Array.isArray(dados.dados)
+            ? (dados.dados as Record<string, unknown>)
+            : {},
+        avaliacao:
+          dados.avaliacao &&
+          typeof dados.avaliacao === "object"
+            ? dados.avaliacao
+            : null,
+        importacoesIds: Array.isArray(dados.importacoesIds)
+          ? dados.importacoesIds.filter(
+              (id): id is string =>
+                typeof id === "string",
+            )
+          : [],
+        atualizadoEm: null,
+      });
+    }
+  }
+}
+
+const idsAfetadosArray = Array.from(idsAfetados);
+
+const idsCacheAindaNecessarios =
+  idsAfetadosArray.filter(
+    (pacienteId) =>
+      !cachePacientes.has(pacienteId),
+  );
+
+if (idsCacheAindaNecessarios.length > 0) {
+  const cacheRestante =
+    await buscarPacientesCacheC7(
+      ubsId,
+      idsCacheAindaNecessarios,
+    );
+
+  for (const [
+    pacienteId,
+    paciente,
+  ] of cacheRestante) {
+    cachePacientes.set(
+      pacienteId,
+      paciente,
+    );
+  }
+}
+
+marcarC7(
+  `Pacientes do cache carregados (${cachePacientes.size} documentos de ${idsAfetadosArray.length} afetados)`,
+);
+
+  const pacientesAtualizados: CacheC7Paciente[] = [];
+  const alteracoes: Array<{ anterior: any | null; atual: any | null }> = [];
+
+  if (importacoesRemovidas.length === 0) {
+    for (const pacienteId of idsAfetadosArray) {
+      const cachePaciente = cachePacientes.get(pacienteId);
+      const novoRegistro = novosRegistrosPorPaciente.get(pacienteId);
+
+      if (!novoRegistro) continue;
+
+      const dadosAnteriores = cachePaciente?.dados ?? {};
+      const dadosNovos = mesclarRegistroC7(
+        dadosAnteriores,
+        novoRegistro,
+         importacaoAtualId,
+      );
+
+      const avaliacaoAnterior = cachePaciente?.avaliacao ?? null;
+      const avaliacaoNova = avaliarC7(
+        [dadosNovos],
+        novaReferencia,
+      ).pacientes[0] ?? null;
+
+      const importacoesPaciente = Array.from(
+        new Set([
+          ...(cachePaciente?.importacoesIds ?? []),
+          ...novasImportacoes,
+        ]),
+      ).filter((id) => importacoesIdsAtuais.includes(id));
+
+      pacientesAtualizados.push({
+        pacienteId,
+        dados: dadosNovos,
+        avaliacao: avaliacaoNova,
+        importacoesIds: importacoesPaciente,
+        atualizadoEm: null,
+      });
+
+      alteracoes.push({
+        anterior: avaliacaoAnterior,
+        atual: avaliacaoNova,
+      });
+    }
+} else {
+  /*
+   * Quando uma importação sai da janela das 50,
+   * somente os pacientes que realmente possuíam
+   * aquela importação no histórico precisam ser
+   * reconstruídos.
+   *
+   * Os demais pacientes afetados pertencem apenas
+   * à importação nova e podem seguir o caminho
+   * incremental normal, sem reler o histórico.
+   */
+
+  const importacoesRemovidasSet =
+    new Set(importacoesRemovidas);
+
+  const pacientesQuePrecisamReconstituicao =
+    new Set<string>();
+
+  const pacientesAtualizacaoSimples =
+    new Set<string>();
+
+  for (const pacienteId of idsAfetadosArray) {
+  const cachePaciente =
+    cachePacientes.get(pacienteId);
+
+  const importacoesPaciente =
+    cachePaciente?.importacoesIds ?? [];
+
+  const possuiImportacaoRemovida =
+    importacoesPaciente.some(
+      (id) =>
+        importacoesRemovidasSet.has(id),
+    );
+
+  /*
+   * Se o paciente não possui nenhuma das
+   * importações removidas, não existe motivo
+   * para reconstruir o histórico.
+   */
+  if (!possuiImportacaoRemovida) {
+    pacientesAtualizacaoSimples.add(
+      pacienteId,
+    );
+
+    continue;
+  }
+
+  /*
+   * Pacientes de cache antigo ainda não possuem
+   * a informação de origem dos campos C7.
+   *
+   * Nesse caso mantemos o comportamento anterior
+   * por segurança e reconstruímos o histórico.
+   */
+  const origensC7 =
+    cachePaciente?.dados?.__c7Origem;
+
+  if (
+    !origensC7 ||
+    typeof origensC7 !== "object" ||
+    Array.isArray(origensC7)
+  ) {
+    pacientesQuePrecisamReconstituicao.add(
+      pacienteId,
+    );
+
+    continue;
+  }
+
+  /*
+   * Verifica se alguma informação relevante
+   * para o C7 veio de uma importação que está
+   * sendo removida da janela das 50.
+   */
+  const algumaOrigemRemovida =
+    Object.values(
+      origensC7 as Record<string, unknown>,
+    ).some(
+      (importacaoId) =>
+        typeof importacaoId === "string" &&
+        importacoesRemovidasSet.has(
+          importacaoId,
+        ),
+    );
+
+  if (algumaOrigemRemovida) {
+    /*
+     * Pelo menos um campo relevante do C7
+     * dependia da importação removida.
+     *
+     * Precisamos reconstruir o paciente.
+     */
+    pacientesQuePrecisamReconstituicao.add(
+      pacienteId,
+    );
+  } else {
+    /*
+     * A importação removida fazia parte do
+     * histórico do paciente, mas nenhum campo
+     * relevante atualmente consolidado veio dela.
+     *
+     * Portanto podemos continuar usando o cache
+     * sem reler o histórico.
+     */
+    pacientesAtualizacaoSimples.add(
+      pacienteId,
+    );
+  }
+}
+
+  /*
+   * --------------------------------------------------
+   * 1. PACIENTES QUE NÃO DEPENDEM DA IMPORTAÇÃO REMOVIDA
+   * --------------------------------------------------
+   *
+   * Para esses pacientes, usamos o cache atual +
+   * os dados da importação nova.
+   *
+   * Nenhuma leitura histórica adicional.
+   */
+for (
+  const pacienteId of
+    pacientesAtualizacaoSimples
+) {
+  const cachePaciente =
+    cachePacientes.get(
+      pacienteId,
+    );
+
+  const novoRegistro =
+    novosRegistrosPorPaciente.get(
+      pacienteId,
+    );
+
+  const dadosAnteriores =
+    cachePaciente?.dados ?? {};
+
+  /*
+   * Se existe uma importação nova para este
+   * paciente, ela é incorporada ao cache.
+   *
+   * Se não existe, mantemos exatamente os
+   * dados já consolidados, sem nenhuma
+   * leitura histórica.
+   */
+  const dadosNovos =
+    novoRegistro
+      ? mesclarRegistroC7(
+          dadosAnteriores,
+          novoRegistro,
+          importacaoAtualId,
+        )
+      : dadosAnteriores;
+
+  const avaliacaoAnterior =
+    cachePaciente?.avaliacao ??
+    null;
+
+  /*
+   * Mesmo sem novos dados, precisamos
+   * recalcular a avaliação porque a referência
+   * do C7 mudou.
+   */
+  const avaliacaoNova =
+    avaliarC7(
+      [dadosNovos],
+      novaReferencia,
+    ).pacientes[0] ??
+    null;
+
+  /*
+   * Mantém somente as importações que ainda
+   * fazem parte da janela atual das 50.
+   *
+   * A importação removida é retirada sem
+   * necessidade de consultar o histórico.
+   */
+  const importacoesPaciente =
+    Array.from(
+      new Set([
+        ...(cachePaciente?.importacoesIds ??
+          []),
+        ...novasImportacoes,
+      ]),
+    ).filter((id) =>
+      importacoesIdsAtuais.includes(
+        id,
+      ),
+    );
+
+  pacientesAtualizados.push({
+    pacienteId,
+    dados: dadosNovos,
+    avaliacao:
+      avaliacaoNova,
+    importacoesIds:
+      importacoesPaciente,
+    atualizadoEm: null,
+  });
+
+  alteracoes.push({
+    anterior:
+      avaliacaoAnterior,
+    atual:
+      avaliacaoNova,
+  });
+}
+
+  /*
+   * --------------------------------------------------
+   * 2. PACIENTES QUE REALMENTE DEPENDEM DA IMPORTAÇÃO
+   *    REMOVIDA
+   * --------------------------------------------------
+   */
+  const registrosHistoricosPorPaciente =
+    new Map<
+      string,
+      Array<{
+        id: string;
+        criadoEm: number;
+        importacaoId: string;
+        dados: Record<string, unknown>;
+      }>
+    >();
+
+  const importacoesHistoricasIds =
+    new Set<string>();
+
+  /*
+   * A importação atual já está em memória.
+   */
+  for (
+    const pacienteId of
+      pacientesQuePrecisamReconstituicao
+  ) {
+    const novoRegistro =
+      novosRegistrosPorPaciente.get(
+        pacienteId,
+      );
+
+    if (!novoRegistro) {
+      continue;
+    }
+
+    const registros =
+      registrosHistoricosPorPaciente.get(
+        pacienteId,
+      ) ?? [];
+
+    registros.push({
+      id: pacienteId,
+      criadoEm:
+        novaReferencia.getTime(),
+      importacaoId:
+        importacaoAtualId,
+      dados:
+        novoRegistro,
+    });
+
+    registrosHistoricosPorPaciente.set(
+      pacienteId,
+      registros,
+    );
+
+    importacoesHistoricasIds.add(
+      importacaoAtualId,
+    );
+  }
+
+  /*
+   * Descobrimos somente as importações que os
+   * pacientes realmente reconstruídos possuem
+   * no cache.
+   */
+  const importacoesHistoricasNecessarias =
+  new Set<string>();
+
+for (
+  const pacienteId of
+    pacientesQuePrecisamReconstituicao
+) {
+  const cachePaciente =
+    cachePacientes.get(
+      pacienteId,
+    );
+
+  /*
+   * Para pacientes que já possuem __c7Origem,
+   * só precisamos consultar as importações que
+   * realmente fornecem algum campo utilizado
+   * pelo C7.
+   */
+  const origensC7 =
+    cachePaciente?.dados?.__c7Origem;
+
+  if (
+    origensC7 &&
+    typeof origensC7 === "object" &&
+    !Array.isArray(origensC7)
+  ) {
+    for (const importacaoId of Object.values(
+      origensC7 as Record<string, unknown>,
+    )) {
+      if (
+        typeof importacaoId !== "string" ||
+        !importacaoId ||
+        importacaoId === importacaoAtualId
+      ) {
+        continue;
+      }
+
+      if (
+        importacoesIdsAtuais.includes(
+          importacaoId,
+        )
+      ) {
+        importacoesHistoricasNecessarias.add(
+          importacaoId,
+        );
+      }
+    }
+
+    continue;
+  }
+
+  /*
+   * Cache antigo sem __c7Origem:
+   * mantemos o comportamento anterior para
+   * não correr risco de perder dados.
+   */
+  for (
+    const importacaoId of
+      cachePaciente?.importacoesIds ??
+      []
+  ) {
+    if (
+      importacaoId !==
+        importacaoAtualId &&
+      importacoesIdsAtuais.includes(
+        importacaoId,
+      )
+    ) {
+      importacoesHistoricasNecessarias.add(
+        importacaoId,
+      );
+    }
+  }
+}
+
+  /*
+   * Lê somente o histórico necessário para os
+   * pacientes que realmente perderam uma importação.
+   */
+   /*
+   * Lê somente o histórico dos pacientes que
+   * realmente possuem cada importação necessária.
+   *
+   * Antes, cada importação era consultada contra
+   * todos os pacientes que precisavam de reconstrução.
+   *
+   * Agora usamos importacoesIds do cache para descobrir
+   * exatamente quais pacientes precisam ser procurados
+   * naquela importação.
+   */
+  for (
+    const importacaoId of
+      importacoesHistoricasNecessarias
+  ) {
+    const pacientesDaImportacao: string[] = [];
+
+    for (
+      const pacienteId of
+        pacientesQuePrecisamReconstituicao
+    ) {
+      const cachePaciente =
+        cachePacientes.get(
+          pacienteId,
+        );
+
+      const origensC7 =
+  cachePaciente?.dados?.__c7Origem;
+
+if (
+  origensC7 &&
+  typeof origensC7 === "object" &&
+  !Array.isArray(origensC7)
+) {
+  const possuiOrigemNestaImportacao =
+    Object.values(
+      origensC7 as Record<string, unknown>,
+    ).some(
+      (origem) =>
+        origem === importacaoId,
+    );
+
+  if (possuiOrigemNestaImportacao) {
+    pacientesDaImportacao.push(
+      pacienteId,
+    );
+  }
+} else if (
+  cachePaciente?.importacoesIds?.includes(
+    importacaoId,
+  )
+) {
+  /*
+   * Cache antigo sem __c7Origem:
+   * mantém o comportamento anterior
+   * por segurança.
+   */
+  pacientesDaImportacao.push(
+    pacienteId,
+  );
+}
+    }
+
+    if (
+      pacientesDaImportacao.length === 0
+    ) {
+      continue;
+    }
+
+    for (
+      let inicio = 0;
+      inicio <
+        pacientesDaImportacao.length;
+      inicio += 30
+    ) {
+      const blocoIds =
+        pacientesDaImportacao.slice(
+          inicio,
+          inicio + 30,
+        );
+
+      if (
+        blocoIds.length === 0
+      ) {
+        continue;
+      }
+
+      const snapshot =
+        await ubsRef
+          .collection(
+            "importacoesPEC",
+          )
+          .doc(importacaoId)
+          .collection(
+            "registros",
+          )
+          .where(
+            "pacienteId",
+            "in",
+            blocoIds,
+          )
+          .get();
+
+      if (
+        snapshot.empty
+      ) {
+        continue;
+      }
+
+      importacoesHistoricasIds.add(
+        importacaoId,
+      );
+
+      for (
+        const documento of
+          snapshot.docs
+      ) {
+        const pacienteId =
+          documento.id;
+
+        const dados =
+          juntarRegistroC7(
+            documento.data(),
+          );
+
+        const registros =
+          registrosHistoricosPorPaciente.get(
+            pacienteId,
+          ) ?? [];
+
+        registros.push({
+          id: pacienteId,
+          criadoEm: 0,
+          importacaoId,
+          dados,
+        });
+
+        registrosHistoricosPorPaciente.set(
+          pacienteId,
+          registros,
+        );
+      }
+
+      console.log(
+        `[C7 RECONSTRUÇÃO] ` +
+          `importacao=${importacaoId}, ` +
+          `pacientes=${blocoIds.length}, ` +
+          `registrosLidos=${snapshot.size}`,
+      );
+    }
+  }
+
+  /*
+   * A importação atual já possui sua referência.
+   * Para as demais, usamos a posição na janela
+   * cronológica, evitando leituras extras.
+   */
+  const criadoEmPorImportacao =
+    new Map<string, number>();
+
+  for (
+    const importacaoId of
+      importacoesHistoricasIds
+  ) {
+    if (
+      importacaoId ===
+      importacaoAtualId
+    ) {
+      criadoEmPorImportacao.set(
+        importacaoId,
+        novaReferencia.getTime(),
+      );
+
+      continue;
+    }
+
+    const indice =
+      importacoesIdsAtuais.indexOf(
+        importacaoId,
+      );
+
+    if (indice < 0) {
+      continue;
+    }
+
+    criadoEmPorImportacao.set(
+      importacaoId,
+      -indice,
+    );
+  }
+
+  /*
+   * Preenche a referência cronológica.
+   */
+  for (
+    const registros of
+      registrosHistoricosPorPaciente.values()
+  ) {
+    for (
+      const registro of
+        registros
+    ) {
+      registro.criadoEm =
+        criadoEmPorImportacao.get(
+          registro.importacaoId,
+        ) ??
+        registro.criadoEm;
+    }
+  }
+
+  /*
+   * Reconstrói somente os pacientes que realmente
+   * dependiam da importação removida.
+   */
+  for (
+    const pacienteId of
+      pacientesQuePrecisamReconstituicao
+  ) {
+    const cachePaciente =
+      cachePacientes.get(
+        pacienteId,
+      );
+
+    const registros =
+      registrosHistoricosPorPaciente.get(
+        pacienteId,
+      ) ?? [];
+
+    registros.sort(
+      (a, b) =>
+        b.criadoEm -
+        a.criadoEm,
+    );
+
+    const dadosConsolidados =
+      consolidarRegistrosC7(
+        registros,
+      )[0] ??
+      null;
+
+    const avaliacaoAnterior =
+      cachePaciente?.avaliacao ??
+      null;
+
+    const avaliacaoNova =
+      dadosConsolidados
+        ? avaliarC7(
+            [dadosConsolidados],
+            novaReferencia,
+          ).pacientes[0] ??
+          null
+        : null;
+
+    const importacoesFinais =
+      Array.from(
+        new Set(
+          registros
+            .map(
+              (registro) =>
+                registro.importacaoId,
+            )
+            .filter((id) =>
+              importacoesIdsAtuais.includes(
+                id,
+              ),
+            ),
+        ),
+      );
+
+    if (dadosConsolidados) {
+      pacientesAtualizados.push({
+        pacienteId,
+        dados:
+          dadosConsolidados,
+        avaliacao:
+          avaliacaoNova,
+        importacoesIds:
+          importacoesFinais,
+        atualizadoEm:
+          null,
+      });
+    }
+
+    alteracoes.push({
+      anterior:
+        avaliacaoAnterior,
+      atual:
+        avaliacaoNova,
+    });
+  }
+}
+    marcarC7(
+    `Pacientes recalculados (${pacientesAtualizados.length})`,
+  );
+
+  const resultadoAnterior = cacheAtual.resultado ?? {};
+  const resultadoAtualizado = atualizarResumoAgregadoC7(
+    resultadoAnterior,
+    alteracoes,
+  );
+    marcarC7("Agregado C7 recalculado");
+  const resultadoParaCache = Object.fromEntries(
+  Object.entries({
+    sucesso: true,
+    ...resultadoAtualizado,
+    referencia: novaReferencia.toISOString(),
+    pacientes: [],
+  }).filter(([, valor]) => valor !== undefined),
+);
+
+  const idsParaRemover = new Set<string>();
+  for (const paciente of pacientesAtualizados) {
+    if (paciente.avaliacao === null && paciente.dados) {
+      continue;
+    }
+  }
+
+  const idsExistentes = new Set(pacientesAtualizados.map((item) => item.pacienteId));
+  for (const id of idsAfetadosArray) {
+    if (importacoesRemovidas.length > 0 && !idsExistentes.has(id)) {
+      idsParaRemover.add(id);
+    }
+  }
+
+  if (idsParaRemover.size > 0) {
+    await removerPacientesCacheC7(ubsId, Array.from(idsParaRemover));
+  }
+
+  await salvarPacientesCacheC7(ubsId, pacientesAtualizados);
+    marcarC7(
+    `Cache dos pacientes salvo (${pacientesAtualizados.length} documentos)`,
+  );
+
+  const competencia = competenciaC7(novaReferencia);
+
+await salvarCacheC7(ubsId, {
+  competencia,
+  referencia: novaReferencia.toISOString(),
+  importacoesIds: importacoesIdsAtuais,
+  quantidadeImportacoesConsideradas: importacoesIdsAtuais.length,
+  quantidadePacientes: Number(resultadoAtualizado.totalElegiveis ?? 0),
+  resultado: resultadoParaCache,
+});
+  marcarC7("Cache principal salvo");
+return {
+  resultado: {
+    sucesso: true,
+    ...resultadoAtualizado,
+    referencia: novaReferencia.toISOString(),
+    pacientes: [],
+  } as ReturnType<typeof avaliarC7>,
+  competencia,
+  quantidadeImportacoesConsideradas: importacoesIdsAtuais.length,
+  quantidadeRegistrosConsolidados: Number(
+    resultadoAtualizado.totalElegiveis ?? 0,
+  ),
+};
 }
 
 
@@ -403,6 +1791,31 @@ type PacienteC6Importacao = ReturnType<typeof avaliarC6> & {
 
 export async function POST(request: Request) {
   try {
+
+    const inicioPerformance = Date.now();
+
+    const leiturasFirestore = {
+  usuario: 0,
+  ubs: 0,
+  pacientesExistentes: 0,
+};
+
+const registrarLeitura = (
+  origem: keyof typeof leiturasFirestore,
+  quantidade: number,
+) => {
+  leiturasFirestore[origem] += quantidade;
+
+  console.log(
+    `[LEITURAS ROTA] ${origem}: +${quantidade} | total=${leiturasFirestore[origem]}`,
+  );
+};
+
+const marcarPerformance = (etapa: string) => {
+  console.log(
+    `[PERFORMANCE] ${etapa}: ${Date.now() - inicioPerformance}ms`,
+  );
+};
     const authorization = request.headers.get("authorization");
     if (!authorization?.startsWith("Bearer ")) {
       return NextResponse.json(
@@ -416,6 +1829,10 @@ export async function POST(request: Request) {
 
     const usuarioRef = adminDb.collection("usuarios").doc(decoded.uid);
     const usuarioSnap = await usuarioRef.get();
+      registrarLeitura(
+  "usuario",
+  usuarioSnap.exists ? 1 : 0,
+);
 
     if (!usuarioSnap.exists) {
       return NextResponse.json(
@@ -600,9 +2017,15 @@ export async function POST(request: Request) {
       );
     }
 
+    marcarPerformance("CSV analisado");
+
     const ubsId = usuario.ubsId;
     const ubsRef = adminDb.collection("ubs").doc(ubsId);
     const ubsSnap = await ubsRef.get();
+    registrarLeitura(
+  "ubs",
+  ubsSnap.exists ? 1 : 0,
+);
 
     if (!ubsSnap.exists) {
       return NextResponse.json(
@@ -1357,7 +2780,10 @@ for (
   const pacientesSnap = await pacientesCollection
     .where(FieldPath.documentId(), "in", blocoIds)
     .get();
-
+registrarLeitura(
+  "pacientesExistentes",
+  pacientesSnap.size,
+);
   for (const pacienteDoc of pacientesSnap.docs) {
     pacientesExistentes.set(
       pacienteDoc.id,
@@ -1451,6 +2877,7 @@ async function confirmarBatch() {
         filtroProblemas: resultado.filtroProblemas,
         codigoIndicadorOrigem,
         fonteC5HipertensaoAtiva,
+        importacaoId: importacaoRef.id,
         novoNaImportacao: !pacienteExiste,
         dadosBase: base,
         dadosEspecificos: especificos,
@@ -1467,6 +2894,8 @@ async function confirmarBatch() {
     }
 
     await confirmarBatch();
+
+    marcarPerformance("Pacientes e registros gravados");
 
     /*
      * Mantém o total persistente de pacientes da UBS.
@@ -1862,41 +3291,301 @@ async function confirmarBatch() {
      * consolidada das importações PEC, mantendo Dashboard e tela C7
      * com a mesma fotografia dos pacientes.
      */
-    const c7Consolidado = await calcularC7Consolidado(ubsRef);
+    const c7Consolidado = await atualizarC7ComCache(
+      ubsId,
+  ubsRef,
+  importacaoRef.id,
+  new Date(),
+  resultado.linhas,
+  pacientesIdsImportacao,
+    );
 
     if (c7Consolidado) {
-      const resultadoC7Consolidado = c7Consolidado.resultado;
+  const resultadoC7Consolidado =
+    c7Consolidado.resultado;
 
-      await atualizarIndicadorCacheDashboard(ubsId, "c7", {
-        competencia: c7Consolidado.competencia,
+  console.log(
+    "[C7 DASHBOARD] Valores enviados para o cache:",
+    {
+      competencia:
+        c7Consolidado.competencia,
+      totalElegiveis:
+        resultadoC7Consolidado.totalElegiveis ?? 0,
+      pontuacao:
+        resultadoC7Consolidado.pontuacao ?? null,
+      pontuacaoParcial:
+        resultadoC7Consolidado.pontuacaoParcial ?? 0,
+      pontosDisponiveis:
+        resultadoC7Consolidado.pontosDisponiveis ?? 0,
+      classificacao:
+        resultadoC7Consolidado.classificacao ??
+        "Indisponível",
+    },
+  );
+
+  const versaoDashboard =
+    await atualizarIndicadorCacheDashboard(
+      ubsId,
+      "c7",
+      {
+        competencia:
+          c7Consolidado.competencia,
+
         totalRegistros:
-          resultadoC7Consolidado.pacientes?.length ?? 0,
+          c7Consolidado
+            .quantidadeRegistrosConsolidados,
+
         totalElegiveis:
-          resultadoC7Consolidado.totalElegiveis ?? 0,
+          resultadoC7Consolidado
+            .totalElegiveis ?? 0,
+
         pontuacao:
-          resultadoC7Consolidado.pontuacao ?? null,
+          resultadoC7Consolidado
+            .pontuacao ?? null,
+
         pontuacaoParcial:
-          resultadoC7Consolidado.pontuacaoParcial ?? 0,
+          resultadoC7Consolidado
+            .pontuacaoParcial ?? 0,
+
         pontosDisponiveis:
-          resultadoC7Consolidado.pontosDisponiveis ?? 0,
+          resultadoC7Consolidado
+            .pontosDisponiveis ?? 0,
+
         classificacao:
-          resultadoC7Consolidado.classificacao ?? "Indisponível",
+          resultadoC7Consolidado
+            .classificacao ??
+          "Indisponível",
+
         completo:
-          resultadoC7Consolidado.completo === true,
+          resultadoC7Consolidado
+            .completo === true,
+
         motivoIncompleto:
-          resultadoC7Consolidado.motivoIncompleto ?? null,
+          resultadoC7Consolidado
+            .motivoIncompleto ?? null,
+
         praticas:
-          resultadoC7Consolidado.praticas ?? {},
-      }, c7Consolidado.competencia);
+          resultadoC7Consolidado
+            .praticas ?? {},
+      },
+      c7Consolidado.competencia,
+    );
+
+  console.log(
+    "[C7 DASHBOARD] Cache atualizado:",
+    {
+      versaoDashboard,
+      totalElegiveis:
+        resultadoC7Consolidado
+          .totalElegiveis ?? 0,
+      pontuacao:
+        resultadoC7Consolidado
+          .pontuacao ?? null,
+    },
+  );
+}
+     marcarPerformance("C7 consolidado concluído");
+
+        const cacheSituacao =
+  await buscarCacheSituacaoPacientes(ubsId);
+
+const dadosCache =
+  cacheSituacao?.dados &&
+  typeof cacheSituacao.dados === "object"
+    ? cacheSituacao.dados
+    : null;
+
+const pacientesCache = Array.isArray(
+  dadosCache?.pacientes,
+)
+  ? [...dadosCache.pacientes]
+  : [];
+
+const categoriasCache =
+  dadosCache?._categoriasPorPaciente &&
+  typeof dadosCache._categoriasPorPaciente === "object"
+    ? {
+        ...(dadosCache._categoriasPorPaciente as Record<
+          string,
+          string
+        >),
+      }
+    : null;
+
+/*
+ * Se o cache ainda não possui as categorias internas,
+ * fazemos um cálculo completo uma única vez.
+ *
+ * Isso prepara o cache antigo para as próximas importações
+ * incrementais.
+ */
+if (!dadosCache || !categoriasCache) {
+  console.log("[DEBUG SITUAÇÃO] ENTROU NO CÁLCULO COMPLETO");
+  const situacaoPacientes =
+    await calcularSituacaoPacientes(ubsId);
+
+  await salvarCacheSituacaoPacientes(
+    ubsId,
+    situacaoPacientes,
+  );
+  
+} else {
+  /*
+   * O cache já está preparado.
+   * Recalculamos somente os pacientes envolvidos
+   * nesta importação.
+   */
+  const avaliacoesAfetadas =
+    await calcularSituacaoPacientesAfetados(
+      ubsId,
+      pacientesIdsImportacao,
+    );
+
+  const pacientesPorId = new Map(
+    pacientesCache.map((paciente: any) => [
+      String(paciente.id),
+      paciente,
+    ]),
+  );
+
+  const categoriasPorPaciente = {
+    ...categoriasCache,
+  };
+
+  let semNenhumRegistro =
+    Number(dadosCache.semNenhumRegistro ?? 0);
+
+  let comIndicadoresPendentes =
+    Number(dadosCache.comIndicadoresPendentes ?? 0);
+
+  let comIndicadoresConcluidos =
+    Number(dadosCache.comIndicadoresConcluidos ?? 0);
+
+  let comRegistroSemIndicadorAplicavel =
+    Number(
+      dadosCache.comRegistroSemIndicadorAplicavel ?? 0,
+    );
+
+  const removerCategoria = (
+    categoria: string | undefined,
+  ) => {
+    switch (categoria) {
+      case "sem_nenhum_registro":
+        semNenhumRegistro--;
+        break;
+
+      case "indicadores_pendentes":
+        comIndicadoresPendentes--;
+        break;
+
+      case "indicadores_concluidos":
+        comIndicadoresConcluidos--;
+        break;
+
+      case "registro_sem_indicador_aplicavel":
+        comRegistroSemIndicadorAplicavel--;
+        break;
+    }
+  };
+
+  const adicionarCategoria = (
+    categoria: string,
+  ) => {
+    switch (categoria) {
+      case "sem_nenhum_registro":
+        semNenhumRegistro++;
+        break;
+
+      case "indicadores_pendentes":
+        comIndicadoresPendentes++;
+        break;
+
+      case "indicadores_concluidos":
+        comIndicadoresConcluidos++;
+        break;
+
+      case "registro_sem_indicador_aplicavel":
+        comRegistroSemIndicadorAplicavel++;
+        break;
+    }
+  };
+
+  for (const avaliacao of avaliacoesAfetadas) {
+    const pacienteId = String(
+      avaliacao.situacao.id,
+    );
+
+    const categoriaAnterior =
+      categoriasPorPaciente[pacienteId];
+
+    if (categoriaAnterior) {
+      removerCategoria(categoriaAnterior);
+    } else {
+      /*
+       * Paciente novo: ainda não fazia parte
+       * dos contadores anteriores.
+       */
     }
 
-        const situacaoPacientes =
-      await calcularSituacaoPacientes(ubsId);
-
-    await salvarCacheSituacaoPacientes(
-      ubsId,
-      situacaoPacientes,
+    pacientesPorId.set(
+      pacienteId,
+      avaliacao.situacao,
     );
+
+    categoriasPorPaciente[pacienteId] =
+      avaliacao.categoria;
+
+    adicionarCategoria(
+      avaliacao.categoria,
+    );
+  }
+
+  const pacientesAtualizados =
+    Array.from(pacientesPorId.values());
+
+  const totalPacientes =
+    pacientesAtualizados.length;
+
+  const totalClassificado =
+    semNenhumRegistro +
+    comIndicadoresPendentes +
+    comIndicadoresConcluidos +
+    comRegistroSemIndicadorAplicavel;
+
+  const indicadoresConcluidosPercentual =
+    totalPacientes > 0
+      ? Number(
+          (
+            (comIndicadoresConcluidos /
+              totalPacientes) *
+            100
+          ).toFixed(1),
+        )
+      : 0;
+
+  await salvarCacheSituacaoPacientes(
+    ubsId,
+    {
+      totalPacientes,
+      semNenhumRegistro,
+      comIndicadoresPendentes,
+      comIndicadoresConcluidos,
+      comRegistroSemIndicadorAplicavel,
+      indicadoresConcluidosPercentual,
+      totalClassificado,
+      pacientes: pacientesAtualizados,
+      _categoriasPorPaciente:
+        categoriasPorPaciente,
+    },
+  ); marcarPerformance("Situação dos pacientes concluída");
+}
+marcarPerformance("IMPORTAÇÃO TOTAL");
+  console.log(
+  `[LEITURAS ROTA] TOTAL DIRETO: ${Object.values(leiturasFirestore).reduce(
+    (total, quantidade) => total + quantidade,
+    0,
+  )}`,
+);
 
     return NextResponse.json({
       sucesso: true,
@@ -1943,6 +3632,8 @@ async function confirmarBatch() {
       },
     });
   } catch (error) {
+
+    
     return NextResponse.json(
       {
         sucesso: false,

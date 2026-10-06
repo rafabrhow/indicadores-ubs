@@ -183,7 +183,7 @@ export default function LoginPage() {
             </div>
 
             <p className="text-sm text-white/70">
-              Acesso seguro para profissionais autorizados. V4
+              Acesso seguro para profissionais autorizados. V5
             </p>
           </div>
 

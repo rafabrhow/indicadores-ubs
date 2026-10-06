@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { FieldValue } from "firebase-admin/firestore";
 import { adminAuth, adminDb } from "@/lib/firebase-admin";
 import { verificarSenha } from "@/lib/seguranca";
+import { verificarLimiteLoginAcs } from "@/lib/seguranca/rate-limit";
 
 export const runtime = "nodejs";
 
@@ -20,6 +21,29 @@ export async function POST(request: Request) {
       return NextResponse.json(
         { sucesso: false, mensagem: "Informe o código de acesso e a senha." },
         { status: 400 }
+      );
+    }
+
+    const ip =
+      request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+      request.headers.get("x-real-ip")?.trim() ||
+      "";
+
+    const limiteLogin = await verificarLimiteLoginAcs(ip);
+
+    if (!limiteLogin.permitido) {
+      return NextResponse.json(
+        {
+          sucesso: false,
+          mensagem:
+            "Muitas tentativas de login. Aguarde alguns minutos e tente novamente.",
+        },
+        {
+          status: 429,
+          headers: {
+            "Retry-After": String(limiteLogin.retryAfterSeconds),
+          },
+        }
       );
     }
 

@@ -115,6 +115,11 @@ export default function ImportarPECModal({
 
       setResultado(dados.importacao);
       setEtapa(4);
+
+      // A importação atualiza os caches no servidor. Dispara um evento
+      // para qualquer tela do cliente que esteja acompanhando o dashboard.
+      window.dispatchEvent(new CustomEvent("dashboard:atualizado"));
+
       onConcluido?.(dados.importacao);
     } catch (error) {
       console.error("Erro ao importar PEC:", error);

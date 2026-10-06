@@ -72,15 +72,30 @@ function normalizar(valor: unknown): string {
     .toLowerCase();
 }
 
-function valorCampo(registro: Record<string, unknown>, aliases: string[]): string {
+function criarMapaCamposC7(
+  registro: Record<string, unknown>,
+): Map<string, unknown> {
   const mapa = new Map<string, unknown>();
+
   for (const [chave, valor] of Object.entries(registro)) {
     mapa.set(normalizar(chave), valor);
   }
 
+  return mapa;
+}
+
+function valorCampo(
+  mapa: Map<string, unknown>,
+  aliases: string[],
+): string {
   for (const alias of aliases) {
     const valor = mapa.get(normalizar(alias));
-    if (valor !== undefined && valor !== null && String(valor).trim() !== "") {
+
+    if (
+      valor !== undefined &&
+      valor !== null &&
+      String(valor).trim() !== ""
+    ) {
       return String(valor).trim();
     }
   }
@@ -106,11 +121,14 @@ function inicioJanela(referencia: Date, meses: number): Date {
   return inicio;
 }
 
-function dentroDaJanela(valor: unknown, referencia: Date, meses: number): boolean {
+function dentroDaJanela(
+  valor: unknown,
+  inicio: Date,
+  referencia: Date,
+): boolean {
   const data = parseData(valor);
   if (!data) return false;
 
-  const inicio = inicioJanela(referencia, meses);
   return data >= inicio && data <= referencia;
 }
 
@@ -147,12 +165,16 @@ function classificacao(pontuacao: number): ClassificacaoC7 {
 }
 
 function boolData(
-  registro: Record<string, unknown>,
+  mapa: Map<string, unknown>,
   aliases: string[],
+  inicio: Date,
   referencia: Date,
-  meses: number
 ): boolean {
-  return dentroDaJanela(valorCampo(registro, aliases), referencia, meses);
+  return dentroDaJanela(
+    valorCampo(mapa, aliases),
+    inicio,
+    referencia,
+  );
 }
 
 export function avaliarC7(
@@ -160,6 +182,11 @@ export function avaliarC7(
   referenciaInput?: Date
 ): ResultadoC7 {
   const referencia = referenciaInput ?? new Date();
+
+  // Calcula cada janela uma única vez por execução do C7.
+  const inicioJanela12 = inicioJanela(referencia, 12);
+  const inicioJanela24 = inicioJanela(referencia, 24);
+  const inicioJanela36 = inicioJanela(referencia, 36);
 
   const registros: Record<string, unknown>[] = registrosEntrada.map(
   (registro, index): Record<string, unknown> => {
@@ -187,13 +214,15 @@ export function avaliarC7(
 
   const pessoas = registros
     .map((registro, index) => {
-      const nome = valorCampo(registro, ["Nome"]);
-      const sexo = valorCampo(registro, ["Sexo"]);
-      const identidadeGenero = valorCampo(registro, ["Identidade de gênero", "Identidade genero"]);
-      const dataNascimento = valorCampo(registro, ["Data de nascimento"]);
+      const mapaCampos = criarMapaCamposC7(registro);
+
+      const nome = valorCampo(mapaCampos, ["Nome"]);
+      const sexo = valorCampo(mapaCampos, ["Sexo"]);
+      const identidadeGenero = valorCampo(mapaCampos, ["Identidade de gênero", "Identidade genero"]);
+      const dataNascimento = valorCampo(mapaCampos, ["Data de nascimento"]);
       const idade =
         idadeNaData(dataNascimento, referencia) ??
-        parseIdade(valorCampo(registro, ["Idade"]));
+        parseIdade(valorCampo(mapaCampos, ["Idade"]));
 
       if (!nome || idade === null) return null;
 
@@ -210,9 +239,9 @@ export function avaliarC7(
         return null;
       }
 
-      const cpf = valorCampo(registro, ["CPF"]);
-      const cns = valorCampo(registro, ["CNS"]);
-      const microarea = valorCampo(registro, ["Microárea", "Microarea"]);
+      const cpf = valorCampo(mapaCampos, ["CPF"]);
+      const cns = valorCampo(mapaCampos, ["CNS"]);
+      const microarea = valorCampo(mapaCampos, ["Microárea", "Microarea"]);
 
       const aElegivel = idade >= 25 && idade <= 64;
       const bElegivel = idade >= 9 && idade <= 14;
@@ -222,13 +251,13 @@ export function avaliarC7(
       const a =
         aElegivel &&
         (boolData(
-          registro,
+          mapaCampos,
           [
             "Exame de rastreamento de câncer de colo de útero data última solicitação",
             "Exame de rastreamento de câncer de colo de útero data última avaliação",
           ],
+          inicioJanela36,
           referencia,
-          36
         ) ||
           // O campo de HPV molecular não vem separado neste relatório.
           false);
@@ -237,7 +266,7 @@ export function avaliarC7(
         bElegivel &&
         (() => {
           const data = extrairDataHPV(
-            valorCampo(registro, ["HPV"])
+            valorCampo(mapaCampos, ["HPV"])
           );
           return Boolean(data);
         })();
@@ -245,30 +274,30 @@ export function avaliarC7(
       const c =
         cElegivel &&
         dentroDaJanela(
-          valorCampo(registro, ["Data da última consulta de saúde sexual e reprodutiva"]),
+          valorCampo(mapaCampos, ["Data da última consulta de saúde sexual e reprodutiva"]),
+          inicioJanela12,
           referencia,
-          12
         );
 
       const d =
         dElegivel &&
         (boolData(
-          registro,
+          mapaCampos,
           ["Exame de rastreamento de câncer de mama data Última solicitação"],
+          inicioJanela24,
           referencia,
-          24
         ) ||
           boolData(
-            registro,
+            mapaCampos,
             ["Exame de rastreamento de câncer de mama data Última realização"],
+            inicioJanela24,
             referencia,
-            24
           ) ||
           boolData(
-            registro,
+            mapaCampos,
             ["Exame de rastreamento de câncer de mama data Última avaliação"],
+            inicioJanela24,
             referencia,
-            24
           ));
 
       const pontuacaoDisponivel =

@@ -12,6 +12,8 @@ import { avaliarC6 } from "@/lib/indicadores/c6-idoso";
 import { avaliarC7 } from "@/lib/indicadores/c7-mulher";
 
 export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 type Dados = Record<string, any>;
 
@@ -31,10 +33,17 @@ type IndicadorPaciente = {
   status: "pendente" | "concluido";
 };
 
+type CategoriaSituacaoPaciente =
+  | "sem_nenhum_registro"
+  | "indicadores_pendentes"
+  | "indicadores_concluidos"
+  | "registro_sem_indicador_aplicavel";
+
 type PacienteSituacao = {
   id: string;
   nome: string;
   indicadores: IndicadorPaciente[];
+  categoria: CategoriaSituacaoPaciente;
 };
 
 
@@ -374,10 +383,33 @@ export async function GET(request: Request) {
         : null;
 
       if (pacientesCacheNovo) {
+        const categoriasCache =
+          situacaoCacheNovo._categoriasPorPaciente &&
+          typeof situacaoCacheNovo._categoriasPorPaciente === "object"
+            ? (situacaoCacheNovo._categoriasPorPaciente as Record<
+                string,
+                CategoriaSituacaoPaciente
+              >)
+            : {};
+
+        const pacientesComCategoria =
+          pacientesCacheNovo.map((paciente) => ({
+            ...paciente,
+            categoria:
+              categoriasCache[String(paciente.id)] ??
+              (paciente.indicadores.length > 0
+                ? paciente.indicadores.some(
+                    (indicador) => indicador.status === "pendente",
+                  )
+                  ? "indicadores_pendentes"
+                  : "indicadores_concluidos"
+                : "registro_sem_indicador_aplicavel"),
+          }));
+
         const respostaCacheNovo: RespostaSituacao = {
           sucesso: true,
-          total: pacientesCacheNovo.length,
-          pacientes: pacientesCacheNovo,
+          total: pacientesComCategoria.length,
+          pacientes: pacientesComCategoria,
         };
 
         return NextResponse.json(respostaCacheNovo);
@@ -701,6 +733,9 @@ export async function GET(request: Request) {
             texto(paciente.nome) ||
             "Paciente sem nome",
           indicadores: [],
+          categoria: historicos.length > 0
+            ? "registro_sem_indicador_aplicavel"
+            : "sem_nenhum_registro",
         });
 
         continue;
@@ -726,6 +761,9 @@ export async function GET(request: Request) {
           texto(paciente.nome) ||
           "Paciente sem nome",
         indicadores,
+        categoria: possuiPendencia
+          ? "indicadores_pendentes"
+          : "indicadores_concluidos",
       });
     }
 

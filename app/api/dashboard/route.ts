@@ -6,6 +6,8 @@ import {
 } from "@/lib/indicadores/cache-dashboard";
 
 export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 /**
  * Endpoint único do Dashboard.

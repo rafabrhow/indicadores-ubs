@@ -27,7 +27,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { db } from "@/lib/firestore";
 import { useAuth } from "@/context/AuthContext";
-import { avaliarC5, type ResultadoC5 } from "@/lib/indicadores/c5";
+import { avaliarC5Hipertensao, type ResultadoC5Hipertensao } from "@/lib/indicadores/c5-hipertensao";
 
 type DadosPaciente = Record<string, unknown>;
 
@@ -120,7 +120,7 @@ export default function PacienteDetalhePage() {
     }>
   >([]);
   const [carregandoHistorico, setCarregandoHistorico] = useState(false);
-  const [c5, setC5] = useState<ResultadoC5 | null>(null);
+  const [c5, setC5] = useState<ResultadoC5Hipertensao | null>(null);
 
   async function carregarC5(pacienteId: string, ubsId: string) {
     try {
@@ -130,6 +130,7 @@ export default function PacienteDetalhePage() {
 
       const candidatos: Array<{
         criadoEm: Date | null;
+        listaTematica: string;
         dadosEspecificos: Record<string, unknown>;
       }> = [];
 
@@ -162,6 +163,7 @@ export default function PacienteDetalhePage() {
 
         candidatos.push({
           criadoEm: importacao.criadoEm?.toDate?.() || null,
+          listaTematica,
           dadosEspecificos:
             registro.dadosEspecificos &&
             typeof registro.dadosEspecificos === "object"
@@ -183,9 +185,14 @@ export default function PacienteDetalhePage() {
       }
 
       setC5(
-        avaliarC5(
+        avaliarC5Hipertensao(
           maisRecente.dadosEspecificos,
-          maisRecente.criadoEm ?? new Date()
+          {
+            referencia: maisRecente.criadoEm ?? new Date(),
+            metadados: {
+              listaTematica: maisRecente.listaTematica,
+            },
+          }
         )
       );
     } catch (error) {
@@ -414,9 +421,14 @@ export default function PacienteDetalhePage() {
 
       if (importacaoHipertensao) {
         setC5(
-          avaliarC5(
+          avaliarC5Hipertensao(
             importacaoHipertensao.dadosEspecificos,
-            importacaoHipertensao.dataAvaliacao ?? new Date()
+            {
+              referencia: importacaoHipertensao.dataAvaliacao ?? new Date(),
+              metadados: {
+                listaTematica: importacaoHipertensao.listaTematica,
+              },
+            }
           )
         );
       } else {

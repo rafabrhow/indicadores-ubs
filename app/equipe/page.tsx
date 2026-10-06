@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  Copy,
   UserPlus,
   UsersRound,
   ShieldCheck,
@@ -19,7 +18,6 @@ import {
 } from "lucide-react";
 
 import { useRouter } from "next/navigation";
-import Image from "next/image";
 import { useEffect, useState } from "react";
 
 import {
@@ -77,8 +75,6 @@ export default function EquipePage() {
   // ============================================================
   // ESTADOS DA PÁGINA
   // ============================================================
-
-  const [copiado, setCopiado] = useState(false);
 
   // Controla o modal compartilhado de cadastro de ACS
   const [modalCadastro, setModalCadastro] = useState(false);
@@ -227,17 +223,6 @@ export default function EquipePage() {
   ).length;
 
   // ============================================================
-  // CÓDIGO DA EQUIPE
-  // ============================================================
-  //
-  // Mantemos temporariamente o código visual da equipe.
-  // A geração/armazenamento real do código da equipe será feita
-  // em uma etapa posterior.
-  //
-
-  const codigoEquipe = "09A-79EB";
-
-  // ============================================================
   // PROTEÇÃO DA PÁGINA
   // ============================================================
   //
@@ -323,24 +308,6 @@ export default function EquipePage() {
       console.error("Erro ao carregar resumo da microárea:", error);
     } finally {
       setCarregandoResumoMicroarea(false);
-    }
-  }
-
-  // ============================================================
-  // COPIAR CÓDIGO DA EQUIPE
-  // ============================================================
-
-  async function copiarCodigo() {
-    try {
-      await navigator.clipboard.writeText(codigoEquipe);
-
-      setCopiado(true);
-
-      setTimeout(() => {
-        setCopiado(false);
-      }, 2000);
-    } catch (error) {
-      console.error("Não foi possível copiar o código:", error);
     }
   }
 
@@ -523,82 +490,35 @@ export default function EquipePage() {
 
           <div className="px-7 py-7">
 
-            {/* =================================================
-                CÓDIGO DA EQUIPE
-            ================================================== */}
-
             <section className="rounded-2xl border border-[#E7E2F2] bg-white p-5 shadow-sm">
-
               <div className="flex items-start justify-between gap-4">
-
                 <div>
-
                   <p className="text-[10px] font-medium text-gray-500">
-                    Código da Equipe
+                    ACS da equipe
                   </p>
-
-                  <div className="mt-2 flex items-center gap-3">
-
-                    <p className="font-mono text-2xl font-bold tracking-[0.25em] text-[#211A4A]">
-                      {codigoEquipe}
-                    </p>
-
-                    <button
-                      type="button"
-                      onClick={copiarCodigo}
-                      className="flex items-center gap-2 rounded-lg bg-gray-50 px-3 py-2 text-[9px] font-semibold text-gray-600 transition hover:bg-[#EEE7FF] hover:text-[#7C3AED]"
-                    >
-                      {copiado ? (
-                        <>
-                          <Check size={13} />
-                          Copiado
-                        </>
-                      ) : (
-                        <>
-                          <Copy size={13} />
-                          Copiar
-                        </>
-                      )}
-                    </button>
-
-                  </div>
-
+                  <p className="mt-1 text-[9px] text-gray-500">
+                    Cadastre diretamente os ACS vinculados à sua UBS. Cada ACS receberá um código de acesso e uma senha provisória exclusivos.
+                  </p>
                 </div>
 
+                <button
+                  type="button"
+                  onClick={abrirModalCadastro}
+                  className="shrink-0 flex items-center gap-2 rounded-lg bg-[#7C3AED] px-4 py-2.5 text-[9px] font-semibold text-white shadow-sm transition hover:bg-[#6D28D9]"
+                >
+                  <UserPlus size={13} />
+                  Cadastrar ACS
+                </button>
               </div>
 
-              {/* Informação */}
-              <div className="mt-5 rounded-xl bg-[#FAF9FD] px-4 py-3">
-
-                <p className="text-[9px] text-gray-500">
-                  Cadastre diretamente os ACS da sua equipe.
-                  Cada ACS receberá um código de acesso e uma
-                  senha provisória exclusivos.
-                </p>
-
-              </div>
-
-              {/* Rodapé do card */}
               <div className="mt-5 flex items-center justify-between">
-
                 <p className="text-[9px] text-gray-500">
                   <strong className="text-[#211A4A]">
                     {quantidadeACS}
                   </strong>{" "}
                   de 20 acessos utilizados
                 </p>
-
-                <button
-                  type="button"
-                  onClick={abrirModalCadastro}
-                  className="flex items-center gap-2 rounded-lg bg-[#7C3AED] px-4 py-2.5 text-[9px] font-semibold text-white shadow-sm transition hover:bg-[#6D28D9]"
-                >
-                  <UserPlus size={13} />
-                  Cadastrar ACS
-                </button>
-
               </div>
-
             </section>
 
             {/* =================================================
