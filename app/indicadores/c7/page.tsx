@@ -345,19 +345,19 @@ export default function C7Page() {
                             : "border-[#FECACA] bg-gradient-to-br from-[#FFF1F2] to-[#FFE4E6]"
                   }`}
                 >
-                  <div className="flex items-start justify-between gap-2">
-                    <p className="text-[9px] font-bold text-[#003B8E]">
+                  <div className="relative min-h-[30px]">
+                <p className="pr-12 text-[9px] font-bold text-[#003B8E]">
                       {codigo} • {p.titulo}
                     </p>
 
                     {prioridade === "Prioridade" && (
-                      <span className="shrink-0 rounded-full bg-[#FEE2E2] px-2 py-0.5 text-[7px] font-extrabold text-[#DC2626]">
-                        Prioridade
+                        <span className="absolute right-0 top-0 shrink-0 rounded-full bg-[#FEE2E2] px-2 py-0.5 text-[7px] font-extrabold text-[#DC2626]">
+                    Prioridade
                       </span>
                     )}
 
                     {prioridade === "Atenção" && (
-                      <span className="shrink-0 rounded-full bg-[#FEF3C7] px-2 py-0.5 text-[7px] font-extrabold text-[#D97706]">
+                      <span className="absolute right-0 top-0 shrink-0 rounded-full bg-[#FEF3C7] px-2 py-0.5 text-[7px] font-extrabold text-[#D97706]">
                         Atenção
                       </span>
                     )}

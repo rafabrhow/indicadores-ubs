@@ -928,7 +928,7 @@ const [modalSituacaoAberto, setModalSituacaoAberto] = useState(false);
               <div className="pointer-events-none absolute right-8 -top-16 h-40 w-40 rounded-full bg-[#F2C300]/25 blur-3xl" />
               <div className="pointer-events-none absolute bottom-[-70px] left-1/2 h-40 w-64 -translate-x-1/2 rounded-full bg-[#00A9E8]/20 blur-3xl" />
 
-              <div className="relative pr-44 sm:pr-52">
+              <div className="relative pr-28 sm:pr-44 lg:pr-52">
                 <p className="text-[11px] font-semibold text-white/85">
                   Enfermeira Gestora
                 </p>
@@ -941,8 +941,8 @@ const [modalSituacaoAberto, setModalSituacaoAberto] = useState(false);
                   {ubs?.nome || "UBS"} • {ubs?.municipio || ""} {ubs?.uf ? `• ${ubs.uf}` : ""}
                 </p>
 
-                <div className="absolute right-28 top-1/2 hidden -translate-y-1/2 sm:right-32 sm:flex">
-                  <div className="flex h-[78px] w-[250px] items-center justify-between rounded-[20px] border border-transparent bg-transparent px-4 shadow-none backdrop-blur-none">
+                  <div className="absolute right-20 top-1/2 flex -translate-y-1/2 lg:right-32">
+                  <div className="flex h-[78px] w-[195px] items-center justify-between rounded-[20px] border border-transparent bg-transparent px-1 shadow-none backdrop-blur-none">
                     <div className="min-w-0">
                       <p className="text-[22px] font-semibold leading-none tracking-tight tabular-nums">
                         {agora
@@ -968,7 +968,7 @@ const [modalSituacaoAberto, setModalSituacaoAberto] = useState(false);
                       </p>
                     </div>
 
-                    <div className="relative h-14 w-14 shrink-0 rounded-full border border-white/35 bg-white/10">
+                    <div className="relative ml-0 h-14 w-14 shrink-0 rounded-full border border-white/35 bg-white/10">
                       {Array.from({ length: 12 }).map((_, index) => {
                         const angle = index * 30;
                         return (
