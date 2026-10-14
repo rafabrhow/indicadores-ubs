@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { onIdTokenChanged } from "firebase/auth";
 import { useRouter } from "next/navigation";
 import { auth } from "@/lib/firebase";
+import { useDashboardCache } from "@/context/DashboardCacheContext";
 
 type Pratica={codigo:string;titulo:string;pontos:number;atingida:boolean;status:"atingida"|"pendente"|"nao_aplicavel";detalhe:string};
 type Paciente={id:string;nome:string;cpf:string;microarea:string;pontuacao:number;classificacao:string;fase:string;idadeGestacionalSemanas:number|null;diasPuerperio:number|null;praticas:Pratica[]};
@@ -11,20 +12,49 @@ type Relatorio={possuiDados:boolean;mensagem?:string;resumo?:{totalRegistros:num
 const nomes:Record<string,string>={A:"1ª consulta até 12 semanas",B:"7 consultas de pré-natal",C:"7 aferições de pressão",D:"7 registros de peso + altura",E:"3 visitas domiciliares",F:"dTpa a partir de 20 semanas",G:"Exames do 1º trimestre",H:"Exames do 3º trimestre",I:"Consulta no puerpério",J:"Visita no puerpério",K:"Saúde bucal"};
 const codigos=Object.keys(nomes);
 export default function C3Page(){
- const router=useRouter(); const [relatorio,setRelatorio]=useState<Relatorio|null>(null); const [erro,setErro]=useState(""); const [busca,setBusca]=useState(""); const [micro,setMicro]=useState("todas"); const [classif,setClassif]=useState("todas"); const [situacao,setSituacao]=useState("todas"); const [pratica,setPratica]=useState("todas"); const [fase,setFase]=useState("todas"); const [aberto,setAberto]=useState<string|null>(null); const [mostrarFiltros,setMostrarFiltros]=useState(false);
+ const router=useRouter(); const { carregarCache } = useDashboardCache(); const [relatorio,setRelatorio]=useState<Relatorio|null>(null); const [erro,setErro]=useState(""); const [busca,setBusca]=useState(""); const [micro,setMicro]=useState("todas"); const [classif,setClassif]=useState("todas"); const [situacao,setSituacao]=useState("todas"); const [pratica,setPratica]=useState("todas"); const [fase,setFase]=useState("todas"); const [aberto,setAberto]=useState<string|null>(null); const [mostrarFiltros,setMostrarFiltros]=useState(false);
  useEffect(()=>{
+  let cancelado=false;
+
   const unsub=onIdTokenChanged(auth,async(user)=>{
-   if(!user){setErro("Sessão não autenticada.");return;}
+   if(!user){
+    if(!cancelado)setErro("Sessão não autenticada.");
+    return;
+   }
+
    try{
     const token=await user.getIdToken();
-    const r=await fetch("/api/indicadores/c3",{headers:{Authorization:`Bearer ${token}`}});
-    const d=await r.json();
-    if(!r.ok||!d.sucesso){setErro(d.mensagem??"Não foi possível carregar o C3.");return;}
-    setRelatorio(d);
-   }catch{setErro("Não foi possível carregar o C3.");}
+
+    const dados=await carregarCache<Relatorio>(
+     `indicador:c3:${user.uid}`,
+     async()=>{
+      const resposta=await fetch("/api/indicadores/c3",{
+       headers:{Authorization:`Bearer ${token}`},
+      });
+      const resultado=await resposta.json();
+
+      if(!resposta.ok||!resultado.sucesso){
+       throw new Error(resultado.mensagem??"Não foi possível carregar o C3.");
+      }
+
+      return resultado as Relatorio;
+     },
+    );
+
+    if(cancelado)return;
+    setErro("");
+    setRelatorio(dados);
+   }catch(e){
+    if(cancelado)return;
+    setErro(e instanceof Error?e.message:"Não foi possível carregar o C3.");
+   }
   });
-  return()=>unsub();
- },[]);
+
+  return()=>{
+   cancelado=true;
+   unsub();
+  };
+ },[carregarCache]);
  const pacientes=relatorio?.pacientes??[]; const microareas=useMemo(()=>Array.from(new Set(pacientes.map(p=>p.microarea).filter(Boolean))).sort(),[pacientes]);
  const filtrados=useMemo(()=>pacientes.filter(p=>{const b=busca.toLowerCase().trim(); const okBusca=!b||p.nome.toLowerCase().includes(b)||p.cpf.includes(b); const okMicro=micro==="todas"||p.microarea===micro; const okClass=classif==="todas"||p.classificacao===classif; const pend=p.praticas.some(x=>x.status==="pendente"); const okSit=situacao==="todas"||(situacao==="pendentes"&&pend)||(situacao==="em-dia"&&!pend); const okPr=pratica==="todas"||p.praticas.some(x=>x.codigo===pratica&&x.status==="pendente"); const okF=fase==="todas"||p.fase===fase; return okBusca&&okMicro&&okClass&&okSit&&okPr&&okF;}),[pacientes,busca,micro,classif,situacao,pratica,fase]);
  const limpar=()=>{setBusca("");setMicro("todas");setClassif("todas");setSituacao("todas");setPratica("todas");setFase("todas");};
@@ -86,7 +116,42 @@ export default function C3Page(){
                     style={{width:`${x.percentual}%`}}
                   />
                 </div><p className="mt-1 text-[8px] text-gray-400">{x.atingidos} atingiram · {x.pendentes} pendentes · {x.naoAplicaveis} ainda não aplicáveis</p></div>})}</div></section>
- <section className="mx-4 my-4 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-[#DDEAF2]"><div className="flex items-center justify-between"><div><h2 className="text-sm font-extrabold">Onde concentrar o acompanhamento</h2><p className="text-[9px] text-gray-400">Use os filtros para localizar rapidamente as gestantes/puérperas que precisam de atenção.</p></div><button onClick={()=>setMostrarFiltros(v=>!v)} className="flex items-center gap-2 rounded-xl bg-[#EAF7FC] px-3 py-2 text-[9px] font-bold text-[#003B8E]"><Filter size={14}/> Filtros</button></div>{mostrarFiltros&&<div className="mt-3 grid gap-2 md:grid-cols-3"><div className="relative md:col-span-3"><Search size={14} className="absolute left-3 top-2.5 text-gray-400"/><input value={busca} onChange={e=>setBusca(e.target.value)} placeholder="Buscar nome ou CPF" className="w-full rounded-xl border border-gray-200 bg-white py-2 pl-9 pr-3 text-xs outline-none focus:border-[#00A9E8]"/></div><select value={micro} onChange={e=>setMicro(e.target.value)} className="rounded-xl border border-gray-200 px-3 py-2 text-xs"><option value="todas">Todas as microáreas</option>{microareas.map(m=><option key={m} value={m}>Microárea {m}</option>)}</select><select value={classif} onChange={e=>setClassif(e.target.value)} className="rounded-xl border border-gray-200 px-3 py-2 text-xs"><option value="todas">Todas as classificações</option>{["Ótimo","Bom","Suficiente","Regular"].map(x=><option key={x}>{x}</option>)}</select><select value={situacao} onChange={e=>setSituacao(e.target.value)} className="rounded-xl border border-gray-200 px-3 py-2 text-xs"><option value="todas">Todas as situações</option><option value="pendentes">Com pendências</option><option value="em-dia">Sem pendências</option></select><select value={pratica} onChange={e=>setPratica(e.target.value)} className="rounded-xl border border-gray-200 px-3 py-2 text-xs"><option value="todas">Todas as práticas</option>{codigos.map(c=><option key={c} value={c}>{c} — {nomes[c]}</option>)}</select><select value={fase} onChange={e=>setFase(e.target.value)} className="rounded-xl border border-gray-200 px-3 py-2 text-xs"><option value="todas">Todas as fases</option><option>Gestação</option><option>Puerpério</option></select><button onClick={limpar} className="flex items-center justify-center gap-1 rounded-xl border border-gray-200 px-3 py-2 text-xs font-bold text-gray-500"><X size={13}/> Limpar filtros</button></div>}</section>
+ <section className="mx-4 my-4 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-[#DDEAF2]">
+  <div className="flex items-center justify-between gap-3">
+    <div>
+      <h2 className="text-sm font-extrabold">Onde concentrar o acompanhamento</h2>
+      <p className="text-[9px] text-gray-400">Toque em uma prática para mostrar somente gestantes/puérperas com aquela pendência.</p>
+    </div>
+    <button onClick={()=>setMostrarFiltros(v=>!v)} aria-expanded={mostrarFiltros} className="flex shrink-0 items-center gap-2 rounded-xl bg-[#EAF7FC] px-3 py-2 text-[9px] font-bold text-[#003B8E]"><Filter size={14}/> Filtros</button>
+  </div>
+  <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
+    {([
+      {codigo:"todas",titulo:"Todas",total:resumo.totalElegiveis},
+      ...codigos.map(c=>({
+        codigo:c,
+        titulo:`${c} · ${nomes[c]}`,
+        total:pacientes.filter(p=>p.praticas.some(x=>x.codigo===c&&x.status==="pendente")).length
+      }))
+    ]).map(item=>{
+      const selecionado=pratica===item.codigo;
+      const prioridade=item.codigo!=="todas" && item.total>0 && item.total/Math.max(resumo.totalElegiveis,1)>=0.5;
+      const grupoAzul=["A","E","I"].includes(item.codigo);
+      const grupoVerde=["B","F","J"].includes(item.codigo);
+      const grupoAmarelo=["C","G","K"].includes(item.codigo);
+      const cor=item.codigo==="todas"?"border-[#DDEAF2] bg-[#F7FAFC]":grupoAzul?"border-[#9EDFF2] bg-gradient-to-br from-[#EAF7FC] to-[#D7F1FA]":grupoVerde?"border-[#A7E6C0] bg-gradient-to-br from-[#ECFDF3] to-[#DDF7E7]":grupoAmarelo?"border-[#F5D66A] bg-gradient-to-br from-[#FFF9E5] to-[#FFF1B8]":"border-[#FECACA] bg-gradient-to-br from-[#FFF1F2] to-[#FFE4E6]";
+      return <button key={item.codigo} type="button" onClick={()=>setPratica(selecionado?"todas":item.codigo)} aria-pressed={selecionado} className={`relative min-h-[88px] rounded-xl border p-3 text-left transition-all hover:-translate-y-0.5 hover:shadow-md ${selecionado?"border-[#7C3AED] bg-[#EAF7FC] ring-1 ring-[#7C3AED]":cor}`}>
+        <div className="min-h-[30px] pr-1 text-[8px] font-bold text-[#003B8E]">{item.titulo}</div>
+        {prioridade&&<span className="absolute right-2 top-2 rounded-full bg-[#FEE2E2] px-1.5 py-0.5 text-[6px] font-extrabold text-[#DC2626]">Prioridade</span>}
+        <p className="mt-1 text-xl font-extrabold text-[#003B8E]">{item.total}</p>
+        <p className="text-[8px] text-gray-500">{item.codigo==="todas"?"elegíveis":"pendentes"}</p>
+      </button>;
+    })}
+  </div>
+  {pratica!=="todas"&&<div className="mt-2 flex items-center justify-between rounded-xl bg-[#EAF7FC] px-3 py-2">
+    <p className="text-[8px] font-semibold text-[#003B8E]">Mostrando gestantes/puérperas com pendência na prática {pratica}.</p>
+    <button type="button" onClick={()=>setPratica("todas")} className="text-[8px] font-extrabold text-[#003B8E]">Limpar prática</button>
+  </div>}
+  {mostrarFiltros&&<div className="mt-3 grid gap-2 md:grid-cols-3"><div className="relative md:col-span-3"><Search size={14} className="absolute left-3 top-2.5 text-gray-400"/><input value={busca} onChange={e=>setBusca(e.target.value)} placeholder="Buscar nome ou CPF" className="w-full rounded-xl border border-gray-200 bg-white py-2 pl-9 pr-3 text-xs outline-none focus:border-[#00A9E8]"/></div><select value={micro} onChange={e=>setMicro(e.target.value)} className="rounded-xl border border-gray-200 px-3 py-2 text-xs"><option value="todas">Todas as microáreas</option>{microareas.map(m=><option key={m} value={m}>Microárea {m}</option>)}</select><select value={classif} onChange={e=>setClassif(e.target.value)} className="rounded-xl border border-gray-200 px-3 py-2 text-xs"><option value="todas">Todas as classificações</option>{["Ótimo","Bom","Suficiente","Regular"].map(x=><option key={x}>{x}</option>)}</select><select value={situacao} onChange={e=>setSituacao(e.target.value)} className="rounded-xl border border-gray-200 px-3 py-2 text-xs"><option value="todas">Todas as situações</option><option value="pendentes">Com pendências</option><option value="em-dia">Sem pendências</option></select><select value={pratica} onChange={e=>setPratica(e.target.value)} className="rounded-xl border border-gray-200 px-3 py-2 text-xs"><option value="todas">Todas as práticas</option>{codigos.map(c=><option key={c} value={c}>{c} — {nomes[c]}</option>)}</select><select value={fase} onChange={e=>setFase(e.target.value)} className="rounded-xl border border-gray-200 px-3 py-2 text-xs"><option value="todas">Todas as fases</option><option>Gestação</option><option>Puerpério</option></select><button onClick={limpar} className="flex items-center justify-center gap-1 rounded-xl border border-gray-200 px-3 py-2 text-xs font-bold text-gray-500"><X size={13}/> Limpar filtros</button></div>}</section>
  <section className="mx-4 mb-6 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-[#DDEAF2]"><h2 className="text-sm font-extrabold">Gestantes e puérperas</h2><p className="mb-3 text-[9px] text-gray-400">{filtrados.length} registro(s) exibido(s).</p><div className="space-y-2">{filtrados.map(p=>{const isOpen=aberto===p.id;return <article key={p.id} className="overflow-hidden rounded-xl border border-[#E7E2F2]"><button onClick={()=>setAberto(isOpen?null:p.id)} className="flex w-full items-center justify-between gap-3 p-3 text-left"><div className="min-w-0"><p className="truncate text-[10px] font-extrabold">{p.nome}</p><p className="text-[8px] text-gray-400">Microárea {p.microarea||"não informada"} · CPF {p.cpf||"não informado"} · {p.fase}{p.idadeGestacionalSemanas!==null?` · IG ${p.idadeGestacionalSemanas.toFixed(1)} sem`:""}</p></div><div className="flex items-center gap-2"><span className="rounded-full bg-[#EAF7FC] px-2 py-1 text-[9px] font-bold text-[#003B8E]">{p.pontuacao.toLocaleString("pt-BR",{minimumFractionDigits:1})}%</span><span className="rounded-full bg-gray-50 px-2 py-1 text-[8px]">{p.classificacao}</span>{isOpen?<ChevronUp size={14}/>:<ChevronDown size={14}/>}</div></button>{isOpen&&<div className="grid gap-2 border-t border-[#E7E2F2] bg-[#F7FAFC] p-3 md:grid-cols-2">{p.praticas.map(x=><div key={x.codigo} className="rounded-xl bg-white p-3 ring-1 ring-[#DDEAF2]"><div className="flex items-center justify-between text-[9px] font-bold"><span>{x.codigo} — {x.titulo}</span><span className={x.status==="atingida"?"text-emerald-600":x.status==="nao_aplicavel"?"text-gray-400":"text-red-500"}>{x.status==="atingida"?"Atingida":x.status==="nao_aplicavel"?"Não aplicável":"Pendente"}</span></div><p className="mt-1 text-[8px] leading-relaxed text-gray-500">{x.detalhe}</p></div>)}</div>}</article>})}</div></section>
  </main>;
 }

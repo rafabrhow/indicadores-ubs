@@ -25,6 +25,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { auth } from "@/lib/firebase";
 import { useAuth } from "@/context/AuthContext";
+import { useDashboardCache } from "@/context/DashboardCacheContext";
 import ModalCadastrarACS from "@/components/acs/ModalCadastrarACS";
 import TourBrasil360 from "@/components/tour/TourBrasil360";
 import LoadingBrasil360 from "@/components/ui/LoadingBrasil360";
@@ -155,38 +156,58 @@ type ResumoSituacaoPacientes = {
 
 export default function DashboardPage() {
   const router = useRouter();
+  const {
+  dados: dadosDashboard,
+  acsAtivos,
+  pacientes,
+  pacientesSituacao: pacientesSituacaoCache,
+  carregarCache,
+} = useDashboardCache();
   const [agora, setAgora] = useState<Date | null>(null);
 
   async function carregarPacientesSituacao() {
     try {
       setCarregandoPacientesSituacao(true);
 
-      const usuarioFirebase = auth.currentUser;
+      // Reutiliza a lista que o Dashboard já carregou para esta sessão.
+      // O carregarCache também compartilha uma eventual requisição simultânea.
+      const pacientesEmCache = await carregarCache<any[]>(
+        "dashboard:situacao-pacientes",
+        async () => {
+          const usuarioFirebase = auth.currentUser;
 
-      if (!usuarioFirebase) return;
+          if (!usuarioFirebase) {
+            throw new Error("Usuário não autenticado.");
+          }
 
-      const token = await usuarioFirebase.getIdToken();
+          const token = await usuarioFirebase.getIdToken();
+          const resposta = await fetch(
+            "/api/dashboard/situacao-pacientes",
+            {
+              cache: "no-store",
+              headers: {
+                Authorization: `Bearer ${token}`,
+                "Cache-Control": "no-cache",
+              },
+            },
+          );
 
-      const resposta = await fetch(
-        "/api/dashboard/situacao-pacientes",
-        {
-          cache: "no-store",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Cache-Control": "no-cache",
-          },
+          const dados = await resposta.json();
+
+          if (!resposta.ok || !dados.sucesso) {
+            throw new Error(
+              dados.mensagem ||
+                "Não foi possível carregar a situação dos pacientes.",
+            );
+          }
+
+          return Array.isArray(dados.pacientes) ? dados.pacientes : [];
         },
       );
 
-      const dados = await resposta.json();
-
-      if (resposta.ok && dados.sucesso) {
-        setPacientesSituacao(
-          Array.isArray(dados.pacientes)
-            ? dados.pacientes
-            : [],
-        );
-      }
+      setPacientesSituacao(
+        Array.isArray(pacientesEmCache) ? pacientesEmCache : [],
+      );
     } catch (error) {
       console.error(
         "Erro ao carregar situação detalhada dos pacientes:",
@@ -352,21 +373,18 @@ const [modalSituacaoAberto, setModalSituacaoAberto] = useState(false);
         setCarregandoBucal(true);
 
         const usuarioFirebase = auth.currentUser;
-        if (!usuarioFirebase) return;
+if (!usuarioFirebase) return;
 
-        const token = await usuarioFirebase.getIdToken();
+const token = await usuarioFirebase.getIdToken();
 
-        const resposta = await fetch("/api/dashboard", {
-          cache: "no-store",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Cache-Control": "no-cache",
-          },
-        });
+const dados = {
+  sucesso: dadosDashboard !== null,
+  acsAtivos,
+  pacientes,
+  dados: dadosDashboard ?? {},
+};
 
-        const dados = await resposta.json();
-
-        if (!cancelado && resposta.ok && dados.sucesso) {
+        if (!cancelado && dados.sucesso) {
           setResumoDashboard({
             acsAtivos: Number(dados.acsAtivos ?? 0),
             pacientes: Number(dados.pacientes ?? 0),
@@ -381,22 +399,12 @@ const [modalSituacaoAberto, setModalSituacaoAberto] = useState(false);
           // categorias dos pacientes. Assim, o card e o modal usam
           // exatamente a mesma classificação.
           try {
-            const respostaSituacao = await fetch(
-              "/api/dashboard/situacao-pacientes",
-              {
-                cache: "no-store",
-                headers: {
-                  Authorization: `Bearer ${token}`,
-                  "Cache-Control": "no-cache",
-                },
-              },
-            );
-
-            const dadosSituacao = await respostaSituacao.json();
-
+            const dadosSituacao = {
+  sucesso: Array.isArray(pacientesSituacaoCache),
+  pacientes: pacientesSituacaoCache,
+};
             if (
               !cancelado &&
-              respostaSituacao.ok &&
               dadosSituacao.sucesso &&
               Array.isArray(dadosSituacao.pacientes)
             ) {
@@ -725,6 +733,15 @@ const [modalSituacaoAberto, setModalSituacaoAberto] = useState(false);
  * Assim, abrir o Dashboard não recalcula o indicador nem consulta
  * /api/indicadores/c2.
  */
+    const handleDashboardAtualizado = () => {
+      void carregarDashboardCache();
+    };
+
+    window.addEventListener(
+      "dashboard:atualizado",
+      handleDashboardAtualizado,
+    );
+
     carregarDashboardCache();
 
     // A situação detalhada dos pacientes é carregada somente quando
@@ -734,8 +751,19 @@ const [modalSituacaoAberto, setModalSituacaoAberto] = useState(false);
 
     return () => {
       cancelado = true;
+      window.removeEventListener(
+        "dashboard:atualizado",
+        handleDashboardAtualizado,
+      );
     };
-  }, [carregando, usuario]);
+  },  [
+  carregando,
+  usuario,
+  dadosDashboard,
+  acsAtivos,
+  pacientes,
+  pacientesSituacaoCache,
+]);
 
   /**
    * Enquanto o AuthProvider verifica a sessão,

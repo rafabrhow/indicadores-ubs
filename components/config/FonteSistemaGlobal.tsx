@@ -6,7 +6,7 @@ const CHAVE_FONTE = "brasil360_fonte_sistema_v1";
 const CHAVE_TAMANHO = "brasil360_tamanho_fonte_v1";
 
 const FONTES: Record<string, string> = {
-  padrao: 'var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif',
+  padrao:'ui-sans-serif, system-ui, sans-serif',
   arial: "Arial, sans-serif",
   verdana: "Verdana, sans-serif",
   tahoma: "Tahoma, sans-serif",

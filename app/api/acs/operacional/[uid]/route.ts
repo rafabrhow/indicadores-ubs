@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { FieldPath, QueryDocumentSnapshot } from "firebase-admin/firestore";
+import { QueryDocumentSnapshot } from "firebase-admin/firestore";
+import { buscarCacheSituacaoPacientes } from "@/lib/indicadores/cache-dashboard";
 import { adminAuth, adminDb } from "@/lib/firebase-admin";
 
 export const runtime = "nodejs";
@@ -238,39 +239,46 @@ export async function GET(
       dados: doc.data() as Registro,
     }));
 
-    // Busca os históricos PEC uma vez por importação e monta um mapa por paciente.
-    // Isso evita uma consulta separada para cada paciente.
-    const registrosPorPaciente = new Map<string, { tema: string; registro: Registro }[]>();
-    const importacoesSnap = await ubsRef.collection("importacoesPEC").get();
+    // A importação PEC já consolida os indicadores no cache da UBS.
+    // Não percorremos importaçõesPEC/registros a cada acesso do ACS.
+    const cacheSituacao = await buscarCacheSituacaoPacientes(ubsId);
+    const dadosCache = cacheSituacao?.dados;
+    const pacientesCache =
+      dadosCache &&
+      typeof dadosCache === "object" &&
+      "pacientes" in dadosCache &&
+      Array.isArray(dadosCache.pacientes)
+        ? (dadosCache.pacientes as Array<{
+            id: string;
+            categoria?: string;
+            indicadores?: Array<{ status?: string }>;
+          }>)
+        : [];
 
-    for (const importacaoDoc of importacoesSnap.docs) {
-      const meta = importacaoDoc.data() || {};
-      const tema = temaImportacao(texto(meta.listaTematica));
-      const ids = pacientesBase.map((p) => p.id);
+    const categoriasCache =
+      dadosCache &&
+      typeof dadosCache === "object" &&
+      "_categoriasPorPaciente" in dadosCache &&
+      dadosCache._categoriasPorPaciente &&
+      typeof dadosCache._categoriasPorPaciente === "object"
+        ? (dadosCache._categoriasPorPaciente as Record<string, string>)
+        : {};
 
-      for (let inicio = 0; inicio < ids.length; inicio += 30) {
-        const bloco = ids.slice(inicio, inicio + 30);
-        if (!bloco.length) continue;
-
-        const registrosSnap = await importacaoDoc.ref
-          .collection("registros")
-          .where(FieldPath.documentId(), "in", bloco)
-          .get();
-
-        for (const registroDoc of registrosSnap.docs) {
-          const registro = registroDoc.data() as Registro;
-          const lista = registrosPorPaciente.get(registroDoc.id) || [];
-          lista.push({ tema, registro });
-          registrosPorPaciente.set(registroDoc.id, lista);
-        }
-      }
-    }
+    const pacientesCachePorId = new Map(
+      pacientesCache.map((paciente) => [String(paciente.id), paciente]),
+    );
 
     const pacientes = pacientesBase
       .map(({ id, dados }) => {
-        const historicos = registrosPorPaciente.get(id) || [];
-        const situacao = historicos.length
-          ? situacaoPorRegistro(historicos)
+        const pacienteCache = pacientesCachePorId.get(id);
+        const categoria = categoriasCache[id] ?? pacienteCache?.categoria;
+        const possuiPendencias =
+          categoria === "indicadores_pendentes" ||
+          pacienteCache?.indicadores?.some(
+            (indicador) => indicador.status === "pendente",
+          ) === true;
+        const situacao: Situacao = possuiPendencias
+          ? "Atenção"
           : situacaoFallback(dados);
 
         return {

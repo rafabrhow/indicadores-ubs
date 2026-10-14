@@ -5,6 +5,7 @@ import { ArrowLeft, CheckCircle2, ChevronDown, Loader2, XCircle } from "lucide-r
 import { useRouter } from "next/navigation";
 import { onIdTokenChanged } from "firebase/auth";
 import { auth } from "@/lib/firebase";
+import { useDashboardCache } from "@/context/DashboardCacheContext";
 
 type Pratica = {
   codigo: "A" | "B" | "C" | "D";
@@ -82,6 +83,7 @@ function nivelPrioridade(pendentes: number, total: number) {
 
 export default function RelatorioC5Page() {
   const router = useRouter();
+  const { carregarCache } = useDashboardCache();
   const [relatorio, setRelatorio] = useState<Relatorio | null>(null);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState("");
@@ -91,38 +93,61 @@ export default function RelatorioC5Page() {
   const [aberto, setAberto] = useState<string | null>(null);
 
   useEffect(() => {
+    let cancelado = false;
+
     const unsubscribe = onIdTokenChanged(auth, async (usuario) => {
       if (!usuario) {
         router.replace("/login");
         return;
       }
 
+      setCarregando(true);
+      setErro("");
+
       try {
-        const token = await usuario.getIdToken();
-        const resposta = await fetch("/api/indicadores/c5", {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        const dados = await carregarCache<Relatorio>(
+          `indicador:c5:${usuario.uid}`,
+          async () => {
+            const token = await usuario.getIdToken();
+            const resposta = await fetch("/api/indicadores/c5", {
+              headers: { Authorization: `Bearer ${token}` },
+            });
 
-        const dados = await resposta.json();
+            const resultado = await resposta.json();
 
-        if (!resposta.ok || !dados.sucesso) {
-          throw new Error(dados.mensagem || "Não foi possível carregar o C5.");
-        }
+            if (!resposta.ok || !resultado.sucesso) {
+              throw new Error(
+                resultado.mensagem || "Não foi possível carregar o C5."
+              );
+            }
 
-        setRelatorio(dados);
-      } catch (error) {
-        setErro(
-          error instanceof Error
-            ? error.message
-            : "Não foi possível carregar o relatório."
+            return resultado as Relatorio;
+          }
         );
+
+        if (!cancelado) {
+          setRelatorio(dados);
+        }
+      } catch (error) {
+        if (!cancelado) {
+          setErro(
+            error instanceof Error
+              ? error.message
+              : "Não foi possível carregar o relatório."
+          );
+        }
       } finally {
-        setCarregando(false);
+        if (!cancelado) {
+          setCarregando(false);
+        }
       }
     });
 
-    return () => unsubscribe();
-  }, [router]);
+    return () => {
+      cancelado = true;
+      unsubscribe();
+    };
+  }, [router, carregarCache]);
 
   const microareas = useMemo(() => {
     const valores = new Set(

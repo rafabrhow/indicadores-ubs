@@ -20,6 +20,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { auth } from "@/lib/firebase";
 import { useAuth } from "@/context/AuthContext";
+import { useDashboardCache } from "@/context/DashboardCacheContext";
 import LoadingBrasil360 from "@/components/ui/LoadingBrasil360";
 
 type Importacao = {
@@ -187,6 +188,7 @@ function estiloTipo(tipo: string) {
 export default function HistoricoPage() {
   const router = useRouter();
   const { usuario, ubs, carregando } = useAuth();
+  const { carregarCache } = useDashboardCache();
 
   const [dados, setDados] = useState<ResultadoHistorico | null>(null);
   const [carregandoHistorico, setCarregandoHistorico] = useState(true);
@@ -217,9 +219,14 @@ export default function HistoricoPage() {
     }
   }, [carregando, usuario, router]);
 
-  // Carrega somente o histórico depois que a autenticação/perfil estiverem resolvidos.
+  // Carrega o histórico uma vez por sessão usando o cache compartilhado.
+  // A chave é isolada por UBS e usuário; o F5 recria o cache em memória.
   useEffect(() => {
     if (carregando || !usuario || usuario.perfil !== "enfermeira") return;
+
+    // Guarda a referência já validada para manter o tipo não nulo dentro da função assíncrona.
+    const usuarioAutenticado = usuario;
+    let cancelado = false;
 
     async function carregar() {
       try {
@@ -233,41 +240,63 @@ export default function HistoricoPage() {
         }
 
         const token = await usuarioFirebase.getIdToken();
+        const chaveCache = `dashboard:historico:${usuarioAutenticado.ubsId}:${usuarioAutenticado.uid}`;
 
-        const resposta = await fetch("/api/dashboard/historico", {
-          headers: {
-            Authorization: `Bearer ${token}`,
+        const resultado = await carregarCache<ResultadoHistorico>(
+          chaveCache,
+          async () => {
+            const resposta = await fetch("/api/dashboard/historico", {
+              cache: "no-store",
+              headers: {
+                Authorization: `Bearer ${token}`,
+                "Cache-Control": "no-cache",
+              },
+            });
+
+            const dadosResposta: ResultadoHistorico = await resposta.json();
+
+            if (!resposta.ok || !dadosResposta.sucesso) {
+              throw new Error(
+                dadosResposta.mensagem || "Não foi possível carregar o histórico.",
+              );
+            }
+
+            return dadosResposta;
           },
-        });
+        );
 
-        const resultado: ResultadoHistorico = await resposta.json();
-
-        if (!resposta.ok || !resultado.sucesso) {
-          throw new Error(
-            resultado.mensagem || "Não foi possível carregar o histórico.",
-          );
-        }
+        if (cancelado) return;
 
         setDados(resultado);
 
-        if (resultado.importacoes?.length) {
-          setSelecionada(resultado.importacoes[0]);
+        const importacoes = resultado.importacoes ?? [];
+        if (importacoes.length > 0) {
+          setSelecionada((atual) =>
+            atual
+              ? importacoes.find((item) => item.id === atual.id) ?? importacoes[0]
+              : importacoes[0],
+          );
         } else {
           setSelecionada(null);
         }
       } catch (error) {
+        if (cancelado) return;
         setErro(
           error instanceof Error
             ? error.message
             : "Não foi possível carregar o histórico.",
         );
       } finally {
-        setCarregandoHistorico(false);
+        if (!cancelado) setCarregandoHistorico(false);
       }
     }
 
-    carregar();
-  }, [carregando, usuario]);
+    void carregar();
+
+    return () => {
+      cancelado = true;
+    };
+  }, [carregando, usuario, carregarCache]);
 
   const tipos = useMemo(() => {
     const lista = dados?.importacoes ?? [];

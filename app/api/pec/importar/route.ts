@@ -2792,6 +2792,53 @@ registrarLeitura(
   }
 }
 
+function combinarDadosPEC(
+  anteriores: Record<string, unknown>,
+  novos: Record<string, unknown>
+): Record<string, unknown> {
+  const resultado: Record<string, unknown> = { ...anteriores };
+
+  for (const [chave, valorNovo] of Object.entries(novos)) {
+    if (
+      valorNovo === undefined ||
+      valorNovo === null ||
+      valorNovo === ""
+    ) {
+      continue;
+    }
+
+    const valorAnterior = resultado[chave];
+
+    if (
+      Array.isArray(valorNovo) &&
+      valorNovo.length === 0 &&
+      Array.isArray(valorAnterior) &&
+      valorAnterior.length > 0
+    ) {
+      continue;
+    }
+
+    if (
+      !Array.isArray(valorNovo) &&
+      typeof valorNovo === "object" &&
+      typeof valorAnterior === "object" &&
+      valorNovo !== null &&
+      valorAnterior !== null &&
+      !Array.isArray(valorAnterior)
+    ) {
+      resultado[chave] = combinarDadosPEC(
+        valorAnterior as Record<string, unknown>,
+        valorNovo as Record<string, unknown>
+      );
+      continue;
+    }
+
+    resultado[chave] = valorNovo;
+  }
+
+  return resultado;
+}
+
 let batch = adminDb.batch();
 let operacoes = 0;
 
@@ -2812,6 +2859,50 @@ async function confirmarBatch() {
 
       const { base, especificos } = separarDadosBase(registro);
       const microareaId = normalizarMicroarea(base.Microárea || "");
+      const dadosPacienteExistentes = pacienteSnap?.data() ?? {};
+
+const resumoAnterior =
+  dadosPacienteExistentes.resumoOperacionalPEC &&
+  typeof dadosPacienteExistentes.resumoOperacionalPEC === "object"
+    ? (dadosPacienteExistentes.resumoOperacionalPEC as Record<
+        string,
+        Record<string, unknown>
+      >)
+    : {};
+
+const chaveResumo =
+  String(codigoIndicadorOrigem || resultado.listaTematica || "geral")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_|_$/g, "") || "geral";
+
+const resumoTematicoAnterior = resumoAnterior[chaveResumo] || {};
+
+const resumoOperacionalPEC = {
+  ...resumoAnterior,
+  [chaveResumo]: {
+    ...resumoTematicoAnterior,
+    pacienteId,
+    ubsId,
+    listaTematica: resultado.listaTematica,
+    grupoCondicoes: resultado.grupoCondicoes,
+    filtroProblemas: resultado.filtroProblemas,
+    codigoIndicadorOrigem,
+    fonteC5HipertensaoAtiva,
+    dadosBase: combinarDadosPEC(
+      (resumoTematicoAnterior.dadosBase as Record<string, unknown>) || {},
+      base
+    ),
+    dadosEspecificos: combinarDadosPEC(
+      (resumoTematicoAnterior.dadosEspecificos as Record<string, unknown>) || {},
+      especificos
+    ),
+    microareaId,
+    importacaoId: importacaoRef.id,
+  },
+};
 
       const pacienteAtual = {
         id: pacienteId,
@@ -2825,6 +2916,7 @@ async function confirmarBatch() {
         telefoneCelular: base["Telefone celular"] || "",
         telefoneContato: base["Telefone de contato"] || "",
         microareaId,
+        resumoOperacionalPEC,
         endereco: {
           rua: base.Rua || "",
           numero: base.Número || "",
@@ -2885,6 +2977,28 @@ async function confirmarBatch() {
         criadoEm: FieldValue.serverTimestamp(),
       });
 
+      const historicoPacienteRef = ubsRef
+  .collection("pacientes")
+  .doc(pacienteId)
+  .collection("historicoPEC")
+  .doc(importacaoRef.id);
+
+batch.set(historicoPacienteRef, {
+  arquivoNome: arquivo.name,
+  pacienteId,
+  ubsId,
+  listaTematica: resultado.listaTematica,
+  grupoCondicoes: resultado.grupoCondicoes,
+  filtroProblemas: resultado.filtroProblemas,
+  codigoIndicadorOrigem,
+  fonteC5HipertensaoAtiva,
+  importacaoId: importacaoRef.id,
+  novoNaImportacao: !pacienteExiste,
+  dadosBase: base,
+  dadosEspecificos: especificos,
+  microareaId,
+  criadoEm: FieldValue.serverTimestamp(),
+});
       operacoes++;
       processados++;
 
@@ -2915,6 +3029,7 @@ async function confirmarBatch() {
       pacientesAtualizados: atualizados,
       finalizadoEm: FieldValue.serverTimestamp(),
     });
+    
 
     /*
      * O CSV de Desenvolvimento Infantil já foi processado acima.

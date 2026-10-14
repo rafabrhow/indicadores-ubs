@@ -136,8 +136,20 @@ function encontrarValorPorCampo(
 }
 
 function numeroC6(valor: unknown): number | null {
-  const n = Number(texto(valor).replace(",", "."));
-  return Number.isFinite(n) ? n : null;
+  if (typeof valor === "number") {
+    return Number.isFinite(valor) ? valor : null;
+  }
+
+  const valorTexto = texto(valor);
+
+  // Campo vazio não significa zero.
+  if (!valorTexto) {
+    return null;
+  }
+
+  const numero = Number(valorTexto.replace(",", "."));
+
+  return Number.isFinite(numero) ? numero : null;
 }
 
 function dataBRC6(valor: unknown): Date | null {
@@ -180,8 +192,27 @@ function primeiroCampoC6(
       ([chave]) => normalizar(chave) === alvo,
     );
 
-    if (encontrado && valorPreenchido(encontrado[1])) {
-      return encontrado[1];
+    if (!encontrado) {
+      continue;
+    }
+
+    const valor = encontrado[1];
+
+    // Zero é válido para campos numéricos, como dias desde o atendimento.
+    if (valor === 0) {
+      return valor;
+    }
+
+    if (typeof valor === "string" && texto(valor)) {
+      const numero = Number(valor.replace(",", "."));
+
+      if (Number.isFinite(numero) && numero === 0) {
+        return valor;
+      }
+    }
+
+    if (valorPreenchido(valor)) {
+      return valor;
     }
   }
 
@@ -942,26 +973,35 @@ export async function GET(
         { status: 403 }
       );
     }
+   
+const usuario = usuarioSnap.data();
 
-    const usuario = usuarioSnap.data();
+if (
+  usuario?.ativo !== true ||
+  !["enfermeira", "acs"].includes(usuario?.perfil) ||
+  typeof usuario?.ubsId !== "string" ||
+  !usuario.ubsId.trim()
+) {
+  return NextResponse.json(
+    {
+      sucesso: false,
+      mensagem: "Acesso não autorizado.",
+    },
+    { status: 403 }
+  );
+}
 
-    if (
-      usuario?.ativo !== true ||
-      usuario?.perfil !== "acs" ||
-      typeof usuario?.ubsId !== "string"
-    ) {
-      return NextResponse.json(
-        { sucesso: false, mensagem: "Acesso permitido somente para ACS ativo." },
-        { status: 403 }
-      );
-    }
-
-    if (uid !== decoded.uid) {
-      return NextResponse.json(
-        { sucesso: false, mensagem: "Você não pode acessar outro ACS." },
-        { status: 403 }
-      );
-    }
+// O ACS só pode consultar a própria ficha operacional.
+// A enfermeira pode consultar a ficha pela área da equipe.
+if (usuario.perfil === "acs" && uid !== decoded.uid) {
+  return NextResponse.json(
+    {
+      sucesso: false,
+      mensagem: "Você só pode acessar sua própria área.",
+    },
+    { status: 403 }
+  );
+}
 
     const ubsRef = adminDb.collection("ubs").doc(usuario.ubsId);
     const acsSnap = await ubsRef.collection("acs").doc(uid).get();
@@ -994,12 +1034,19 @@ export async function GET(
 
     const paciente = pacienteSnap.data() || {};
 
-    if (texto(paciente.microareaId) !== texto(acs.microareaId)) {
+    if (
+      usuario.perfil === "acs" &&
+      texto(paciente.microareaId) !== texto(acs.microareaId)
+    ) {
       return NextResponse.json(
-        { sucesso: false, mensagem: "Paciente fora da microárea deste ACS." },
+        {
+          sucesso: false,
+          mensagem: "Paciente fora da microárea deste ACS.",
+        },
         { status: 403 }
       );
     }
+
 
     const pacientePublico = {
       id: pacienteSnap.id,
@@ -1018,35 +1065,102 @@ export async function GET(
           : {},
     };
 
+   
     const registros: Record<string, unknown>[] = [];
 
-    const importacoesSnap = await ubsRef.collection("importacoesPEC").get();
+    // 1. Primeiro, tenta usar o resumo operacional já salvo no paciente.
+    const resumoOperacional = paciente.resumoOperacionalPEC;
 
-    for (const importacaoDoc of importacoesSnap.docs) {
-      const registroSnap = await importacaoDoc.ref
-        .collection("registros")
-        .doc(pacienteSnap.id)
-        .get();
+    const resumoValido =
+      resumoOperacional &&
+      typeof resumoOperacional === "object" &&
+      !Array.isArray(resumoOperacional)
+        ? (resumoOperacional as Record<string, unknown>)
+        : {};
 
-      if (!registroSnap.exists) continue;
-
-      const registro = registroSnap.data() || {};
-
+    for (const valor of Object.values(resumoValido)) {
       if (
-        mesmoPaciente(
-          registro.dadosBase && typeof registro.dadosBase === "object"
-            ? (registro.dadosBase as Record<string, unknown>)
-            : {},
-          pacientePublico
-        )
+        !valor ||
+        typeof valor !== "object" ||
+        Array.isArray(valor)
       ) {
-        registros.push({
-          ...registro,
-          listaTematica:
-            registro.listaTematica || importacaoDoc.data().listaTematica || "",
-        });
+        continue;
+      }
+
+      const registroResumo = valor as Record<string, unknown>;
+
+      // Evita utilizar dados vinculados a outra UBS.
+      if (
+        registroResumo.ubsId &&
+        texto(registroResumo.ubsId) !== texto(usuario.ubsId)
+      ) {
+        continue;
+      }
+
+      registros.push(registroResumo);
+    }
+
+    // 2. Se não houver resumo válido, consulta o histórico como alternativa.
+  
+if (
+  registros.length === 0 ||
+  identificarTematicas(registros).length === 0
+) {
+  const registrosSnap = await adminDb
+    .collectionGroup("registros")
+    .where("pacienteId", "==", pacienteSnap.id)
+    .get();
+
+  // Reutiliza os metadados de cada importação durante esta requisição.
+  const tematicasPorImportacao = new Map<string, string>();
+
+  for (const registroSnap of registrosSnap.docs) {
+    const registro = registroSnap.data();
+
+    if (texto(registro.ubsId) !== texto(usuario.ubsId)) {
+      continue;
+    }
+
+    if (
+      !mesmoPaciente(
+        registro.dadosBase &&
+          typeof registro.dadosBase === "object"
+          ? (registro.dadosBase as Record<string, unknown>)
+          : {},
+        pacientePublico
+      )
+    ) {
+      continue;
+    }
+
+    let listaTematica = registro.listaTematica || "";
+
+    if (!listaTematica) {
+      const importacaoRef = registroSnap.ref.parent.parent;
+
+      if (importacaoRef) {
+        const importacaoId = importacaoRef.path;
+
+        if (tematicasPorImportacao.has(importacaoId)) {
+          listaTematica =
+            tematicasPorImportacao.get(importacaoId) || "";
+        } else {
+          const importacaoSnap = await importacaoRef.get();
+
+          listaTematica =
+            importacaoSnap.data()?.listaTematica || "";
+
+          tematicasPorImportacao.set(
+            importacaoId,
+            listaTematica
+          );
+        }
       }
     }
+
+    registros.push({ ...registro, listaTematica });
+  }
+}
 
     const acompanhamentosSnap = await pacienteRef
       .collection("acompanhamentos")

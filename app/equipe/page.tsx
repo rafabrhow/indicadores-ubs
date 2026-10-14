@@ -30,6 +30,7 @@ import {
 } from "firebase/firestore";
 
 import { useAuth } from "@/context/AuthContext";
+import { useDashboardCache } from "@/context/DashboardCacheContext";
 import ModalCadastrarACS, { type ACSCadastrado } from "@/components/acs/ModalCadastrarACS";
 import { auth } from "@/lib/firebase";
 
@@ -72,6 +73,7 @@ export default function EquipePage() {
     logout,
   } = useAuth();
 
+  const { carregarCache, setCache } = useDashboardCache();
   // ============================================================
   // ESTADOS DA PÁGINA
   // ============================================================
@@ -125,72 +127,73 @@ export default function EquipePage() {
       try {
         setCarregandoACS(true);
 
-        // Usa a instância padrão do Firestore já inicializada em lib/firebase.ts.
-        const db = getFirestore();
+        const lista = await carregarCache<ACS[]>(
+          `equipe:acs:${ubsId}`,
+          async () => {
+            // Usa a instância padrão do Firestore já inicializada em lib/firebase.ts.
+            const db = getFirestore();
 
-        const referencia = collection(
-          db,
-          "ubs",
-          ubsId,
-          "acs"
-        );
-
-        const snapshot = await getDocs(referencia);
-
-        if (cancelado) {
-          return;
-        }
-
-        const listaBase: ACS[] = snapshot.docs.map((doc) => {
-          const dados = doc.data();
-
-          return {
-            id: doc.id,
-            uid:
-              typeof dados.uid === "string"
-                ? dados.uid
-                : doc.id,
-            nome:
-              typeof dados.nome === "string"
-                ? dados.nome
-                : "ACS sem nome",
-            microareaId:
-              typeof dados.microareaId === "string"
-                ? dados.microareaId
-                : "",
-            ativo: dados.ativo === true,
-            codigoAcesso:
-              typeof dados.codigoAcesso === "string"
-                ? dados.codigoAcesso
-                : undefined,
-            ultimoAcesso: formatarUltimoAcesso(dados.ultimoAcesso),
-            quantidadePacientes:
-              typeof dados.quantidadePacientes === "number"
-                ? dados.quantidadePacientes
-                : undefined,
-          };
-        });
-
-        // A quantidade de pacientes é calculada pela microárea real
-        // vinculada a cada ACS. O count evita baixar toda a coleção de pacientes.
-        const lista = await Promise.all(
-          listaBase.map(async (item) => {
-            if (!item.microareaId) {
-              return { ...item, quantidadePacientes: 0 };
-            }
-
-            const pacientesQuery = query(
-              collection(db, "ubs", ubsId, "pacientes"),
-              where("microareaId", "==", item.microareaId),
+            const referencia = collection(
+              db,
+              "ubs",
+              ubsId,
+              "acs"
             );
 
-            const contador = await getCountFromServer(pacientesQuery);
+            const snapshot = await getDocs(referencia);
 
-            return {
-              ...item,
-              quantidadePacientes: contador.data().count,
-            };
-          }),
+            const listaBase: ACS[] = snapshot.docs.map((doc) => {
+              const dados = doc.data();
+
+              return {
+                id: doc.id,
+                uid:
+                  typeof dados.uid === "string"
+                    ? dados.uid
+                    : doc.id,
+                nome:
+                  typeof dados.nome === "string"
+                    ? dados.nome
+                    : "ACS sem nome",
+                microareaId:
+                  typeof dados.microareaId === "string"
+                    ? dados.microareaId
+                    : "",
+                ativo: dados.ativo === true,
+                codigoAcesso:
+                  typeof dados.codigoAcesso === "string"
+                    ? dados.codigoAcesso
+                    : undefined,
+                ultimoAcesso: formatarUltimoAcesso(dados.ultimoAcesso),
+                quantidadePacientes:
+                  typeof dados.quantidadePacientes === "number"
+                    ? dados.quantidadePacientes
+                    : undefined,
+              };
+            });
+
+            // A quantidade de pacientes é calculada pela microárea real
+            // vinculada a cada ACS. O count evita baixar toda a coleção de pacientes.
+            return Promise.all(
+              listaBase.map(async (item) => {
+                if (!item.microareaId) {
+                  return { ...item, quantidadePacientes: 0 };
+                }
+
+                const pacientesQuery = query(
+                  collection(db, "ubs", ubsId, "pacientes"),
+                  where("microareaId", "==", item.microareaId),
+                );
+
+                const contador = await getCountFromServer(pacientesQuery);
+
+                return {
+                  ...item,
+                  quantidadePacientes: contador.data().count,
+                };
+              }),
+            );
+          },
         );
 
         if (cancelado) {
@@ -215,7 +218,7 @@ export default function EquipePage() {
     return () => {
       cancelado = true;
     };
-  }, [carregando, usuario?.ubsId]);
+  }, [carregando, usuario?.ubsId, carregarCache]);
 
   // O limite de 20 considera somente ACS ativos.
   const quantidadeACS = acs.filter(
@@ -877,7 +880,11 @@ export default function EquipePage() {
         aberto={modalCadastro}
         onFechar={() => setModalCadastro(false)}
         onSucesso={(novoACS: ACSCadastrado) => {
-          setAcs((listaAtual) => [...listaAtual, novoACS]);
+          setAcs((listaAtual) => {
+            const novaLista = [...listaAtual, novoACS];
+            setCache(`equipe:acs:${usuario.ubsId}`, novaLista);
+            return novaLista;
+          });
         }}
       />
 

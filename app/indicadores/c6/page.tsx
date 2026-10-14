@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, Filter, Search, UsersRound } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { auth } from "@/lib/firebase";
+import { useDashboardCache } from "@/context/DashboardCacheContext";
 
 type Pratica = {
   codigo: "A" | "B" | "C" | "D";
@@ -39,6 +40,11 @@ type Relatorio = {
   >;
 };
 
+type DadosCacheC6 = {
+  relatorio: Relatorio | null;
+  pacientes: Paciente[];
+};
+
 function nivelPrioridade(pendentes: number, total: number) {
   if (total <= 0 || pendentes <= 0) {
     return null;
@@ -59,6 +65,7 @@ function nivelPrioridade(pendentes: number, total: number) {
 
 export default function C6Page() {
   const router = useRouter();
+  const { carregarCache } = useDashboardCache();
   const [relatorio, setRelatorio] = useState<Relatorio | null>(null);
   const [pacientes, setPacientes] = useState<Paciente[]>([]);
   const [carregando, setCarregando] = useState(true);
@@ -72,26 +79,55 @@ export default function C6Page() {
 
     const unsubscribe = auth.onIdTokenChanged(async (user) => {
       if (!user) {
-        if (ativo) setCarregando(false);
+        if (ativo) {
+          setRelatorio(null);
+          setPacientes([]);
+          setCarregando(false);
+        }
         return;
       }
 
+      setCarregando(true);
+
       try {
-        const token = await user.getIdToken();
-        const resposta = await fetch("/api/indicadores/c6", {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        const dados = await resposta.json();
+        const dados = await carregarCache<DadosCacheC6>(
+          `indicador:c6:${user.uid}`,
+          async () => {
+            const token = await user.getIdToken();
+            const resposta = await fetch("/api/indicadores/c6", {
+              headers: { Authorization: `Bearer ${token}` },
+            });
+            const resultado = await resposta.json();
+
+            if (!resposta.ok) {
+              throw new Error(
+                resultado.mensagem || "Não foi possível carregar o C6.",
+              );
+            }
+
+            if (resultado.sucesso && resultado.possuiDados) {
+              return {
+                relatorio: resultado.resumo as Relatorio,
+                pacientes: (resultado.pacientes || []) as Paciente[],
+              };
+            }
+
+            return {
+              relatorio: null,
+              pacientes: [],
+            };
+          },
+        );
 
         if (!ativo) return;
 
-        if (resposta.ok && dados.sucesso && dados.possuiDados) {
-          setRelatorio(dados.resumo);
-          setPacientes(dados.pacientes || []);
-        } else {
-          setRelatorio(null);
-          setPacientes([]);
-        }
+        setRelatorio(dados.relatorio);
+        setPacientes(dados.pacientes);
+      } catch (error) {
+        if (!ativo) return;
+        console.error("Erro ao carregar indicador C6:", error);
+        setRelatorio(null);
+        setPacientes([]);
       } finally {
         if (ativo) setCarregando(false);
       }
@@ -101,7 +137,7 @@ export default function C6Page() {
       ativo = false;
       unsubscribe();
     };
-  }, []);
+  }, [carregarCache]);
 
   const microareas = useMemo(
     () =>

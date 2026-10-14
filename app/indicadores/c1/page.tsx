@@ -13,6 +13,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { auth } from "@/lib/firebase";
 import { useAuth } from "@/context/AuthContext";
+import { useDashboardCache } from "@/context/DashboardCacheContext";
 
 type ResultadoC1 = {
   sucesso: boolean;
@@ -65,73 +66,90 @@ function formatarNumero(valor: number | undefined) {
 export default function C1MaisAcessoPage() {
   const router = useRouter();
   const { usuario, carregando } = useAuth();
+  const { carregarCache } = useDashboardCache();
 
   const [resultado, setResultado] = useState<ResultadoC1 | null>(null);
   const [carregandoC1, setCarregandoC1] = useState(true);
   const [erro, setErro] = useState("");
 
-  useEffect(() => {
-    if (carregando || !usuario) return;
+ 
+useEffect(() => {
+  if (carregando || !usuario) return;
 
-    if (usuario.perfil !== "enfermeira") {
-      router.replace("/acs");
-      return;
-    }
+  const usuarioAtual = usuario;
 
-    let cancelado = false;
+  if (usuarioAtual.perfil !== "enfermeira") {
+    router.replace("/acs");
+    return;
+  }
 
-    async function carregarC1() {
-      try {
-        setCarregandoC1(true);
-        setErro("");
+  let cancelado = false;
 
-        const usuarioFirebase = auth.currentUser;
+  async function carregarC1() {
+    try {
+      setCarregandoC1(true);
+      setErro("");
 
-        if (!usuarioFirebase) {
-          setErro("Sessão não autenticada.");
-          return;
-        }
+      const usuarioFirebase = auth.currentUser;
 
-        const token = await usuarioFirebase.getIdToken();
+      if (!usuarioFirebase) {
+        setErro("Sessão não autenticada.");
+        return;
+      }
 
-        const resposta = await fetch("/api/indicadores/c1", {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
+      const token = await usuarioFirebase.getIdToken();
 
-        const dados = await resposta.json();
-
-        if (cancelado) return;
-
-        if (!resposta.ok || !dados.sucesso) {
-          throw new Error(
-            dados.mensagem || "Não foi possível consultar o C1.",
+      const dados = await carregarCache<ResultadoC1>(
+        `indicador:c1:${usuarioAtual.ubsId}`,
+        async () => {
+          const resposta = await fetch(
+            "/api/indicadores/c1",
+            {
+              cache: "no-store",
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
+            },
           );
-        }
 
-        setResultado(dados);
-      } catch (error) {
-        if (!cancelado) {
-          setErro(
-            error instanceof Error
-              ? error.message
-              : "Não foi possível carregar o C1.",
-          );
-        }
-      } finally {
-        if (!cancelado) {
-          setCarregandoC1(false);
-        }
+          const resultadoApi = await resposta.json();
+
+          if (!resposta.ok || !resultadoApi.sucesso) {
+            throw new Error(
+              resultadoApi.mensagem ||
+                "Não foi possível consultar o C1.",
+            );
+          }
+
+          return resultadoApi as ResultadoC1;
+        },
+      );
+
+      if (cancelado) return;
+
+      setResultado(dados);
+    } catch (error) {
+      if (!cancelado) {
+        setErro(
+          error instanceof Error
+            ? error.message
+            : "Não foi possível carregar o C1.",
+        );
+      }
+    } finally {
+      if (!cancelado) {
+        setCarregandoC1(false);
       }
     }
+  }
 
-    carregarC1();
+  void carregarC1();
 
-    return () => {
-      cancelado = true;
-    };
-  }, [carregando, usuario, router]);
+  return () => {
+    cancelado = true;
+  };
+}, [carregando, usuario, router, carregarCache]);
+
 
   if (carregando || !usuario) {
     return (

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { ChevronDown, ChevronLeft, Filter, Search, Smile } from "lucide-react";
 import { auth } from "@/lib/firebase";
 import { onIdTokenChanged } from "firebase/auth";
+import { useDashboardCache } from "@/context/DashboardCacheContext";
 
 type Pratica = {
   codigo: "B1" | "B2" | "B3" | "B4" | "B5" | "B6";
@@ -77,6 +78,7 @@ function estiloDetalhe(codigo: (typeof codigos)[number]) {
 
 export default function BucalPage() {
   const router = useRouter();
+  const { carregarCache } = useDashboardCache();
   const [dados, setDados] = useState<Resultado | null>(null);
   const [busca, setBusca] = useState("");
   const [microarea, setMicroarea] = useState("Todas");
@@ -86,11 +88,9 @@ export default function BucalPage() {
   const [erro, setErro] = useState("");
 
   useEffect(() => {
-  let cancelado = false;
+    let cancelado = false;
 
-  const cancelarObservador = onIdTokenChanged(
-    auth,
-    async (usuario) => {
+    const cancelarObservador = onIdTokenChanged(auth, async (usuario) => {
       if (!usuario) {
         if (!cancelado) {
           router.replace("/login");
@@ -99,36 +99,41 @@ export default function BucalPage() {
       }
 
       try {
-        const token = await usuario.getIdToken();
+        setCarregando(true);
+        setErro("");
 
-        const res = await fetch("/api/indicadores/bucal", {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
+        const resultado = await carregarCache<Resultado>(
+          `indicador:bucal:${usuario.uid}`,
+          async () => {
+            const token = await usuario.getIdToken();
+            const res = await fetch("/api/indicadores/bucal", {
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
+            });
 
-        const json = await res.json();
+            const json = await res.json();
+
+            if (!res.ok || !json.sucesso) {
+              throw new Error(
+                json.mensagem || "Erro ao carregar Saúde Bucal."
+              );
+            }
+
+            return json as Resultado;
+          }
+        );
 
         if (cancelado) return;
-
-        if (!res.ok || !json.sucesso) {
-          setErro(
-            json.mensagem ||
-              "Erro ao carregar Saúde Bucal."
-          );
-          return;
-        }
-
-        setDados(json);
+        setDados(resultado);
       } catch (e) {
-        console.error(
-          "Erro ao carregar Saúde Bucal:",
-          e
-        );
+        console.error("Erro ao carregar Saúde Bucal:", e);
 
         if (!cancelado) {
           setErro(
-            "Não foi possível carregar Saúde Bucal."
+            e instanceof Error
+              ? e.message
+              : "Não foi possível carregar Saúde Bucal."
           );
         }
       } finally {
@@ -136,14 +141,14 @@ export default function BucalPage() {
           setCarregando(false);
         }
       }
-    }
-  );
+    });
 
-  return () => {
-    cancelado = true;
-    cancelarObservador();
-  };
-}, [router]);
+    return () => {
+      cancelado = true;
+      cancelarObservador();
+    };
+  }, [router, carregarCache]);
+
   const pacientes = useMemo(() => {
     const termo = busca.trim().toLowerCase();
     return (dados?.pacientes ?? []).filter((p) => {

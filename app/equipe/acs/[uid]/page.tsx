@@ -6,6 +6,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { auth } from "@/lib/firebase";
 import { useAuth } from "@/context/AuthContext";
+import { useDashboardCache } from "@/context/DashboardCacheContext";
 import LoadingBrasil360 from "@/components/ui/LoadingBrasil360";
 
 type Paciente = {
@@ -23,6 +24,7 @@ export default function AreaOperacionalACSPage() {
   const router = useRouter();
   const params = useParams<{ uid: string }>();
   const { usuario, carregando } = useAuth();
+  const { carregarCache } = useDashboardCache();
   const uid = typeof params.uid === "string" ? params.uid : "";
   const [dados, setDados] = useState<Dados | null>(null);
   const [busca, setBusca] = useState("");
@@ -38,16 +40,37 @@ export default function AreaOperacionalACSPage() {
       if (!usuarioAuth) { router.replace("/login"); return; }
       try {
         setCarregandoDados(true); setErro("");
-        const token = await usuarioAuth.getIdToken();
-        const res = await fetch(`/api/acs/operacional/${encodeURIComponent(uid)}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        const json = await res.json();
+
+        const cacheKey = `equipe:acs:operacional:${uid}`;
+
+        const json = await carregarCache<Dados>(
+          cacheKey,
+          async () => {
+            const token = await usuarioAuth.getIdToken();
+
+            const res = await fetch(
+              `/api/acs/operacional/${encodeURIComponent(uid)}`,
+              {
+                headers: { Authorization: `Bearer ${token}` },
+                cache: "no-store",
+              },
+            );
+
+            const resultado = await res.json();
+
+            if (!res.ok || !resultado.sucesso) {
+              throw new Error(
+                resultado.mensagem ||
+                  "Não foi possível carregar a área operacional.",
+              );
+            }
+
+            return resultado as Dados;
+          },
+        );
+
         if (cancelado) return;
-        if (!res.ok || !json.sucesso) {
-          setErro(json.mensagem || "Não foi possível carregar a área operacional.");
-          return;
-        }
+
         setDados(json);
       } catch (e) {
         console.error("Erro na área operacional:", e);
@@ -57,7 +80,7 @@ export default function AreaOperacionalACSPage() {
       }
     });
     return () => { cancelado = true; cancelar(); };
-  }, [carregando, router, uid, usuario]);
+  }, [carregando, router, uid, usuario, carregarCache]);
 
   const filtrados = useMemo(() => {
     if (!dados) return [];
@@ -88,7 +111,7 @@ export default function AreaOperacionalACSPage() {
         <AlertCircle size={28} className="text-red-500" />
         <h1 className="mt-4 text-xl font-bold text-[#003B8E]">Não foi possível abrir a área</h1>
         <p className="mt-2 text-sm text-gray-500">{erro}</p>
-        <button onClick={() => router.back()} className="mt-6 flex items-center gap-2 rounded-xl bg-[#00A9E8] px-5 py-3 text-sm font-semibold text-white">
+        <button onClick={() => router.push("/equipe")} className="mt-6 flex items-center gap-2 rounded-xl bg-[#00A9E8] px-5 py-3 text-sm font-semibold text-white">
           <ArrowLeft size={16} /> Voltar
         </button>
       </div>

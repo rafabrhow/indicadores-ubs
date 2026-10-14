@@ -122,81 +122,60 @@ export default function PacienteDetalhePage() {
   const [carregandoHistorico, setCarregandoHistorico] = useState(false);
   const [c5, setC5] = useState<ResultadoC5Hipertensao | null>(null);
 
-  async function carregarC5(pacienteId: string, ubsId: string) {
+  async function carregarC5(resumoOperacional: unknown) {
     try {
-      const importsSnapshot = await getDocs(
-        collection(db, "ubs", ubsId, "importacoesPEC")
-      );
+      const resumo =
+        resumoOperacional && typeof resumoOperacional === "object" && !Array.isArray(resumoOperacional)
+          ? (resumoOperacional as Record<string, unknown>)
+          : {};
 
-      const candidatos: Array<{
-        criadoEm: Date | null;
-        listaTematica: string;
-        dadosEspecificos: Record<string, unknown>;
-      }> = [];
+      const candidatos = Object.values(resumo).filter((valor) => {
+        if (!valor || typeof valor !== "object" || Array.isArray(valor)) return false;
+        const item = valor as Record<string, unknown>;
+        const lista = typeof item.listaTematica === "string" ? item.listaTematica : "";
+        return lista.toLowerCase().includes("hipertens") &&
+          item.dadosEspecificos && typeof item.dadosEspecificos === "object" &&
+          !Array.isArray(item.dadosEspecificos);
+      }) as Array<Record<string, unknown>>;
 
-      for (const importDoc of importsSnapshot.docs) {
-        const importacao = importDoc.data();
-        const listaTematica =
-          typeof importacao.listaTematica === "string"
-            ? importacao.listaTematica
-            : "";
-
-        if (!listaTematica.toLowerCase().includes("hipertens")) {
-          continue;
-        }
-
-        const registroRef = doc(
-          db,
-          "ubs",
-          ubsId,
-          "importacoesPEC",
-          importDoc.id,
-          "registros",
-          pacienteId
-        );
-
-        const registroSnapshot = await getDoc(registroRef);
-
-        if (!registroSnapshot.exists()) continue;
-
-        const registro = registroSnapshot.data();
-
-        candidatos.push({
-          criadoEm: importacao.criadoEm?.toDate?.() || null,
-          listaTematica,
-          dadosEspecificos:
-            registro.dadosEspecificos &&
-            typeof registro.dadosEspecificos === "object"
-              ? registro.dadosEspecificos
-              : {},
-        });
-      }
-
-      candidatos.sort(
-        (a, b) =>
-          (b.criadoEm?.getTime() ?? 0) - (a.criadoEm?.getTime() ?? 0)
-      );
+      candidatos.sort((a, b) => {
+        const dataA = (a.importacaoCriadoEm as { toMillis?: () => number } | undefined)?.toMillis?.() ?? 0;
+        const dataB = (b.importacaoCriadoEm as { toMillis?: () => number } | undefined)?.toMillis?.() ?? 0;
+        return dataB - dataA;
+      });
 
       const maisRecente = candidatos[0];
-
       if (!maisRecente) {
         setC5(null);
         return;
       }
 
+      const referenciaTimestamp = maisRecente.importacaoCriadoEm as
+        | { toDate?: () => Date }
+        | undefined;
+      // Sem a data original, não calcula o indicador usando a data atual,
+      // pois isso poderia classificar incorretamente prazos clínicos.
+      if (!referenciaTimestamp?.toDate) {
+        setC5(null);
+        return;
+      }
+      const referencia = referenciaTimestamp.toDate();
+
       setC5(
         avaliarC5Hipertensao(
-          maisRecente.dadosEspecificos,
+          maisRecente.dadosEspecificos as Record<string, unknown>,
           {
-            referencia: maisRecente.criadoEm ?? new Date(),
+            referencia,
             metadados: {
-              listaTematica: maisRecente.listaTematica,
+              listaTematica: typeof maisRecente.listaTematica === "string"
+                ? maisRecente.listaTematica
+                : "",
             },
           }
         )
       );
     } catch (error) {
-      console.error("Erro ao calcular C5 do paciente:", error);
+      console.error("Erro ao calcular C5 do paciente pelo resumo:", error);
       setC5(null);
     }
   }
@@ -242,9 +221,9 @@ export default function PacienteDetalhePage() {
           ...snapshot.data(),
         });
 
-        // O C5 é calculado a partir da importação temática de Hipertensão
-        // mais recente, preservando o histórico sem duplicar dados.
-        await carregarC5(snapshot.id, ubsId);
+        // C5 usa o resumo consolidado; evita ler todas as importações na abertura.
+        // O histórico original continua sendo consultado sob demanda pelo enfermeiro.
+        await carregarC5(snapshot.data().resumoOperacionalPEC);
 
         // Carrega o histórico somente quando o usuário abrir a seção.
         // Cada importação preserva seu próprio registro, sem sobrescrever o anterior.
@@ -345,8 +324,9 @@ export default function PacienteDetalhePage() {
   const rua = campo(paciente, "rua") || campo((paciente.endereco as DadosPaciente) || {}, "rua");
   const numero = campo(paciente, "numero") || campo((paciente.endereco as DadosPaciente) || {}, "numero");
 
+  
   async function carregarHistorico() {
-    if (!usuario || !paciente) {
+    if (!usuario || !paciente || carregandoHistorico) {
       return;
     }
 
@@ -355,88 +335,71 @@ export default function PacienteDetalhePage() {
     try {
       setCarregandoHistorico(true);
 
-      const importsSnapshot = await getDocs(
-        collection(db, "ubs", ubsId, "importacoesPEC")
+      // Consulta somente o histórico deste paciente.
+      // Não percorre todas as importações da UBS.
+      const historicoRef = collection(
+        db,
+        "ubs",
+        ubsId,
+        "pacientes",
+        paciente.id as string,
+        "historicoPEC"
       );
 
-      const registros: Array<{
-        id: string;
-        arquivoNome: string;
-        listaTematica: string;
-        criadoEm: string;
-        dataAvaliacao: Date | null;
-        dadosEspecificos: Record<string, unknown>;
-      }> = [];
+      const historicoSnapshot = await getDocs(historicoRef);
 
-      for (const importDoc of importsSnapshot.docs) {
-        const importacao = importDoc.data();
+      const registros = historicoSnapshot.docs.map((registroDoc) => {
+        const registro = registroDoc.data();
 
-        // Os registros da importação usam o mesmo ID do paciente.
-        const registroRef = doc(
-          db,
-          "ubs",
-          ubsId,
-          "importacoesPEC",
-          importDoc.id,
-          "registros",
-          paciente.id as string
-        );
+        const timestamp =
+          registro.importacaoCriadoEm ??
+          registro.criadoEm ??
+          null;
 
-        const registroSnapshot = await getDoc(registroRef);
+        const dataAvaliacao =
+          typeof timestamp?.toDate === "function"
+            ? timestamp.toDate()
+            : null;
 
-        if (!registroSnapshot.exists()) continue;
-
-        const registro = registroSnapshot.data();
-
-        registros.push({
-          id: importDoc.id,
+        return {
+          id: registroDoc.id,
           arquivoNome:
-            typeof importacao.arquivoNome === "string"
-              ? importacao.arquivoNome
+            typeof registro.arquivoNome === "string"
+              ? registro.arquivoNome
               : "Relatório do PEC",
           listaTematica:
-            typeof importacao.listaTematica === "string"
-              ? importacao.listaTematica
+            typeof registro.listaTematica === "string"
+              ? registro.listaTematica
               : "Não informada",
-          criadoEm:
-            importacao.criadoEm?.toDate?.()?.toLocaleString("pt-BR") ||
-            "Data não informada",
-          dataAvaliacao: importacao.criadoEm?.toDate?.() || null,
+          criadoEm: dataAvaliacao
+            ? dataAvaliacao.toLocaleString("pt-BR")
+            : "Data não informada",
+          dataAvaliacao,
           dadosEspecificos:
             registro.dadosEspecificos &&
-            typeof registro.dadosEspecificos === "object"
-              ? registro.dadosEspecificos
+            typeof registro.dadosEspecificos === "object" &&
+            !Array.isArray(registro.dadosEspecificos)
+              ? registro.dadosEspecificos as Record<string, unknown>
               : {},
-        });
-      }
+        };
+      });
 
-      registros.sort((a, b) => b.criadoEm.localeCompare(a.criadoEm));
-      setHistorico(registros);
-
-      // O C5 usa somente a importação mais recente da temática Hipertensão.
-      // A classificação é feita pelo motor técnico, não pela simples presença da temática.
-      const importacaoHipertensao = registros.find((item) =>
-        item.listaTematica.toLowerCase().includes("hipertens")
+      // Mais recente primeiro, usando a data original da importação.
+      registros.sort(
+        (a, b) =>
+          (b.dataAvaliacao?.getTime() ?? 0) -
+          (a.dataAvaliacao?.getTime() ?? 0)
       );
 
-      if (importacaoHipertensao) {
-        setC5(
-          avaliarC5Hipertensao(
-            importacaoHipertensao.dadosEspecificos,
-            {
-              referencia: importacaoHipertensao.dataAvaliacao ?? new Date(),
-              metadados: {
-                listaTematica: importacaoHipertensao.listaTematica,
-              },
-            }
-          )
-        );
-      } else {
-        setC5(null);
-      }
+      setHistorico(registros);
+
+      // O histórico é somente para consulta.
+      // Não recalcula nem sobrescreve o C5.
     } catch (error) {
-      console.error("Erro ao carregar histórico do paciente:", error);
-      setErro("Não foi possível carregar o histórico deste paciente.");
+      console.error(
+        "Erro ao carregar histórico do paciente:",
+        error
+      );
     } finally {
       setCarregandoHistorico(false);
     }

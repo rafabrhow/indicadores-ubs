@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronDown, ChevronLeft, Filter, Search, Venus } from "lucide-react";
 import { auth } from "@/lib/firebase";
+import { useDashboardCache } from "@/context/DashboardCacheContext";
 
 type Pratica = {
   codigo: "A" | "B" | "C" | "D";
@@ -80,6 +81,7 @@ function praticaAplicavel(
 
 export default function C7Page() {
   const router = useRouter();
+  const { carregarCache } = useDashboardCache();
   const [dados, setDados] = useState<Resultado | null>(null);
   const [erro, setErro] = useState("");
   const [busca, setBusca] = useState("");
@@ -104,34 +106,43 @@ export default function C7Page() {
     try {
       setCarregando(true);
 
-      const token = await usuario.getIdToken();
+      const resultado = await carregarCache<Resultado>(
+        `indicador:c7:${usuario.uid}`,
+        async () => {
+          const token = await usuario.getIdToken();
 
-      const resposta = await fetch("/api/indicadores/c7", {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+          const resposta = await fetch("/api/indicadores/c7", {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          });
 
-      const json = await resposta.json();
+          const json = await resposta.json();
+
+          if (resposta.status === 401) {
+            router.replace("/login");
+            throw new Error("Sessão expirada. Faça login novamente.");
+          }
+
+          if (!resposta.ok || !json.sucesso) {
+            throw new Error(json.mensagem || "Erro ao carregar o C7.");
+          }
+
+          return json as Resultado;
+        }
+      );
 
       if (cancelado) return;
-
-      if (resposta.status === 401) {
-        router.replace("/login");
-        return;
-      }
-
-      if (!resposta.ok || !json.sucesso) {
-        setErro(json.mensagem || "Erro ao carregar o C7.");
-        return;
-      }
-
-      setDados(json);
+      setDados(resultado);
     } catch (e) {
       console.error("Erro ao carregar C7:", e);
 
       if (!cancelado) {
-        setErro("Não foi possível carregar o C7.");
+        setErro(
+          e instanceof Error
+            ? e.message
+            : "Não foi possível carregar o C7."
+        );
       }
     } finally {
       if (!cancelado) {
@@ -144,7 +155,7 @@ export default function C7Page() {
     cancelado = true;
     pararObservador();
   };
-}, [router]);
+}, [carregarCache, router]);
 
   const pacientes = useMemo(() => {
     const lista = dados?.pacientes ?? [];
