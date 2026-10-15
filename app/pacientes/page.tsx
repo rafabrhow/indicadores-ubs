@@ -131,7 +131,17 @@ export default function PacientesPage() {
     return;
   }
 
-  const ubsId = usuario.ubsId;
+   const ubsIdInformado = usuario.ubsId?.trim();
+
+if (!ubsIdInformado) {
+  setErro(
+    "Sua conta não está vinculada a uma UBS. Entre em contato com o administrador."
+  );
+  setCarregandoPacientes(false);
+  return;
+}
+
+const ubsId: string = ubsIdInformado;
 
   async function carregar() {
     try {

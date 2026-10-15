@@ -198,7 +198,12 @@ export default function PacienteDetalhePage() {
         return;
       }
 
-      const ubsId = usuario.ubsId;
+            const ubsId = usuario.ubsId?.trim();
+
+      if (!ubsId) {
+        setErro("Sua conta não está vinculada a uma UBS. Entre em contato com o administrador.");
+        return;
+      }
 
       try {
         const id = decodeURIComponent(params.id);
@@ -330,7 +335,12 @@ export default function PacienteDetalhePage() {
       return;
     }
 
-    const ubsId = usuario.ubsId;
+        const ubsId = usuario.ubsId?.trim();
+
+    if (!ubsId) {
+      console.error("Não foi possível carregar o histórico: usuário sem UBS vinculada.");
+      return;
+    }
 
     try {
       setCarregandoHistorico(true);
