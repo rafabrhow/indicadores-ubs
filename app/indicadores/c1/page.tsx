@@ -329,65 +329,115 @@ useEffect(() => {
               </div>
             </section>
 
-            <section className="mt-4 rounded-2xl border border-[#DDEAF2] bg-white p-5 shadow-[0_5px_14px_rgba(0,59,142,0.07)] sm:p-6 transition-all duration-200 hover:shadow-[0_8px_18px_rgba(0,59,142,0.10)]">
-              <h2 className="text-sm font-bold text-[#211A4A]">
-                Composição do indicador
-              </h2>
-
-              <div className="mt-5 space-y-4">
-                <div>
-                  <div className="mb-2 flex items-center justify-between text-[10px]">
-                    <span className="font-medium text-gray-500">
-                      Demanda programada
-                    </span>
-                    <span className="font-bold text-[#003B8E]">
-                      {formatarNumero(programados)}
-                    </span>
+            <section className="mt-4 grid gap-4 lg:grid-cols-2">
+              {/* Painel 1: usa somente os números já disponíveis no resultado consolidado do C1. */}
+              <div className="group rounded-2xl border border-[#B7E7D2] bg-gradient-to-br from-white via-[#F7FFFB] to-[#E4F8EE] p-4 shadow-[0_8px_18px_rgba(16,185,129,0.10),0_3px_6px_rgba(15,23,42,0.05)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_12px_24px_rgba(16,185,129,0.16)] sm:p-5">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-white text-[#0D9488] shadow-sm ring-1 ring-[#B7E7D2]">
+                      <CheckCircle2 size={18} />
+                    </div>
+                    <h2 className="text-sm font-extrabold text-[#244B43]">Atendimentos Realizados</h2>
                   </div>
+                  <span className="rounded-full bg-white/90 px-2.5 py-1 text-[10px] font-semibold text-[#0D9488] ring-1 ring-[#B7E7D2]">C1 · Mais Acesso</span>
+                </div>
 
-                  <div className="h-3 overflow-hidden rounded-full bg-[#EEE7FF]">
-                    <div
-                      className="h-full rounded-full bg-[#00A9E8] transition-all"
-                      style={{
-                        width: `${
-                          total > 0
-                            ? Math.min(100, (programados / total) * 100)
-                            : 0
-                        }%`,
-                      }}
-                    />
+                <div className="mt-4 rounded-xl border border-white bg-white/90 px-4 py-3 text-center shadow-sm">
+                  <p className="text-[11px] text-slate-500">Total de atendimentos considerados</p>
+                  <p className="mt-1 text-3xl font-extrabold tracking-tight text-[#0D9488]">{formatarNumero(total)}</p>
+                </div>
+
+                <div className="mt-3 grid grid-cols-2 gap-3">
+                  <div className="rounded-xl border border-[#B7E7D2] bg-white/90 p-3 text-center shadow-sm">
+                    <div className="mx-auto flex h-8 w-8 items-center justify-center rounded-lg bg-[#E4F8EE] text-[#0D9488]"><CalendarDays size={17} /></div>
+                    <p className="mt-2 text-xl font-extrabold text-[#16805D]">{formatarNumero(programados)}</p>
+                    <p className="mt-1 text-[10px] font-medium text-slate-600">Demanda programada</p>
+                    <p className="mt-1 text-[10px] font-bold text-[#16805D]">{total > 0 ? ((programados / total) * 100).toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 }) : "0,0"}%</p>
+                  </div>
+                  <div className="rounded-xl border border-[#F5D6A5] bg-white/90 p-3 text-center shadow-sm">
+                    <div className="mx-auto flex h-8 w-8 items-center justify-center rounded-lg bg-[#FFF2D9] text-[#D97706]"><Clock3 size={17} /></div>
+                    <p className="mt-2 text-xl font-extrabold text-[#B7791F]">{formatarNumero(espontaneos)}</p>
+                    <p className="mt-1 text-[10px] font-medium text-slate-600">Demanda espontânea</p>
+                    <p className="mt-1 text-[10px] font-bold text-[#B7791F]">{total > 0 ? ((espontaneos / total) * 100).toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 }) : "0,0"}%</p>
                   </div>
                 </div>
 
-                <div>
-                  <div className="mb-2 flex items-center justify-between text-[10px]">
-                    <span className="font-medium text-gray-500">
-                      Demanda espontânea
-                    </span>
-                    <span className="font-bold text-gray-600">
-                      {formatarNumero(espontaneos)}
-                    </span>
+                <div className="mt-4">
+                  <div className="mb-1.5 flex justify-between gap-3 text-[10px] font-semibold">
+                    <span className="text-[#16805D]">Programada: {total > 0 ? ((programados / total) * 100).toLocaleString("pt-BR", { maximumFractionDigits: 1 }) : "0"}%</span>
+                    <span className="text-[#B7791F]">Espontânea: {total > 0 ? ((espontaneos / total) * 100).toLocaleString("pt-BR", { maximumFractionDigits: 1 }) : "0"}%</span>
                   </div>
+                  <div className="flex h-3 overflow-hidden rounded-full bg-slate-100 shadow-inner">
+                    <div className="h-full bg-gradient-to-r from-[#10B981] to-[#34D399] transition-all duration-500" style={{ width: `${total > 0 ? Math.min(100, (programados / total) * 100) : 0}%` }} />
+                    <div className="h-full bg-gradient-to-r from-[#F59E0B] to-[#D97706] transition-all duration-500" style={{ width: `${total > 0 ? Math.min(100, (espontaneos / total) * 100) : 0}%` }} />
+                  </div>
+                </div>
+                <p className="mt-3 text-[10px] leading-relaxed text-slate-500">Composição calculada a partir dos atendimentos programados e espontâneos já consolidados no C1.</p>
+              </div>
 
-                  <div className="h-3 overflow-hidden rounded-full bg-gray-100">
-                    <div
-                      className="h-full rounded-full bg-gray-400 transition-all"
-                      style={{
-                        width: `${
-                          total > 0
-                            ? Math.min(100, (espontaneos / total) * 100)
-                            : 0
-                        }%`,
-                      }}
-                    />
+              {/* Painel 2: não inventa contagens de agendamento que não existem no relatório C1 atual. */}
+              <div className="rounded-2xl border border-[#C7DDF5] bg-gradient-to-br from-white via-[#F8FBFF] to-[#E7F2FF] p-4 shadow-[0_8px_18px_rgba(59,130,246,0.10),0_3px_6px_rgba(15,23,42,0.05)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_12px_24px_rgba(59,130,246,0.15)] sm:p-5">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-white text-[#0284C7] shadow-sm ring-1 ring-[#C7DDF5]">
+                      <CalendarDays size={18} />
+                    </div>
+                    <h2 className="text-sm font-extrabold text-[#23466B]">Atendimentos Agendados</h2>
                   </div>
+                  <span className="rounded-full bg-white/90 px-2.5 py-1 text-[10px] font-semibold text-[#64748B] ring-1 ring-[#CBD5E1]">Fonte necessária</span>
+                </div>
+
+                <div className="mt-4 rounded-xl border border-dashed border-[#B8D5F2] bg-white/80 px-4 py-5 text-center">
+                  <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-[#E7F2FF] text-[#0284C7]"><Info size={20} /></div>
+                  <p className="mt-2 text-base font-extrabold text-[#315A80]">Dados não disponíveis</p>
+                  <p className="mx-auto mt-1 max-w-sm text-xs leading-relaxed text-slate-600">O relatório PEC usado no C1 informa o tipo de atendimento, mas não traz as situações de agendamento necessárias para preencher este painel com segurança.</p>
+                </div>
+
+                <div className="mt-3 grid grid-cols-2 gap-2">
+                  <div className="rounded-lg border border-[#D7E7F8] bg-white/80 p-2.5"><p className="text-[10px] text-slate-500">Agendado / presente</p><p className="mt-1 text-sm font-bold text-slate-400">—</p></div>
+                  <div className="rounded-lg border border-[#D7E7F8] bg-white/80 p-2.5"><p className="text-[10px] text-slate-500">Atendimento realizado</p><p className="mt-1 text-sm font-bold text-slate-400">—</p></div>
+                  <div className="rounded-lg border border-[#D7E7F8] bg-white/80 p-2.5"><p className="text-[10px] text-slate-500">Não compareceu</p><p className="mt-1 text-sm font-bold text-slate-400">—</p></div>
+                  <div className="rounded-lg border border-[#D7E7F8] bg-white/80 p-2.5"><p className="text-[10px] text-slate-500">Cancelado / não aguardou</p><p className="mt-1 text-sm font-bold text-slate-400">—</p></div>
+                </div>
+                <p className="mt-3 text-[10px] leading-relaxed text-slate-500">Este quadro será preenchido quando houver uma fonte de agendamentos no PEC integrada ao Brasil360. Nenhuma contagem foi estimada.</p>
+              </div>
+            </section>
+
+            <section className="mt-4 rounded-2xl border border-[#C9B8F5] bg-gradient-to-br from-[#F3EEFF] via-white to-[#E8DEFF] p-5 shadow-[0_5px_14px_rgba(124,58,237,0.08)] sm:p-6">
+              <div className="flex items-start gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white shadow-sm ring-1 ring-[#C9B8F5]">
+                  <Info size={20} className="text-[#7C3AED]" />
+                </div>
+                <div>
+                  <h2 className="text-sm font-extrabold text-[#211A4A]">Como entender o Mais Acesso?</h2>
+                  <p className="mt-2 text-xs leading-relaxed text-[#4B5563]">
+                    O C1 mostra qual parte dos atendimentos considerados foi programada, em comparação com a soma dos atendimentos programados e espontâneos. Ele descreve a composição dos atendimentos registrados — não a porcentagem da população atendida nem a porcentagem de pessoas que conseguiram consulta.
+                  </p>
                 </div>
               </div>
 
-              <div className="mt-6 rounded-xl border border-[#E5EAF7] bg-gradient-to-r from-[#F4F8FF] to-[#F7F5FF] p-4 text-[10px] leading-relaxed text-gray-500">
-                <strong className="text-[#211A4A]">Fórmula:</strong>{" "}
-                atendimentos de demanda programada ÷ (atendimentos de demanda
-                programada + atendimentos de demanda espontânea) × 100.
+              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                <div className="rounded-xl border border-[#9EDFF2] bg-gradient-to-br from-[#EAF7FC] to-white p-4">
+                  <p className="text-xs font-bold text-[#003B8E]">Demanda programada</p>
+                  <p className="mt-1 text-[11px] leading-relaxed text-[#39708A]">Consulta agendada, consulta agendada programada/cuidado continuado.</p>
+                </div>
+                <div className="rounded-xl border border-[#F5D66A] bg-gradient-to-br from-[#FFF9E5] to-white p-4">
+                  <p className="text-xs font-bold text-[#8A6500]">Demanda espontânea</p>
+                  <p className="mt-1 text-[11px] leading-relaxed text-[#8A6500]">Escuta inicial/orientação, consulta no dia e atendimento de urgência.</p>
+                </div>
+              </div>
+
+              <div className="mt-4 rounded-xl border border-[#DDEAF2] bg-white/90 p-4">
+                <h3 className="text-xs font-extrabold text-[#211A4A]">Como interpretar a classificação oficial</h3>
+                <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+                  <div className="rounded-lg bg-[#F3EEFF] p-3"><p className="text-[10px] text-[#5B4A8A]">Regular</p><p className="mt-1 text-sm font-extrabold text-[#5B21B6]">≤ 10% ou &gt; 70%</p></div>
+                  <div className="rounded-lg bg-[#FFF9E5] p-3"><p className="text-[10px] text-[#8A6500]">Suficiente</p><p className="mt-1 text-sm font-extrabold text-[#8A6500]">&gt; 10% até 30%</p></div>
+                  <div className="rounded-lg bg-[#EAF7FC] p-3"><p className="text-[10px] text-[#39708A]">Bom</p><p className="mt-1 text-sm font-extrabold text-[#003B8E]">&gt; 30% até 50%</p></div>
+                  <div className="rounded-lg bg-[#ECFDF3] p-3"><p className="text-[10px] text-[#39705A]">Ótimo</p><p className="mt-1 text-sm font-extrabold text-[#047857]">&gt; 50% até 70%</p></div>
+                </div>
+                <p className="mt-3 text-[10px] leading-relaxed text-gray-500">
+                  A faixa oficial não significa que quanto maior o percentual, melhor em qualquer situação. Um percentual muito baixo pode indicar pouca oferta programada; um percentual acima de 70% pode indicar pouca abertura à demanda espontânea. A interpretação deve considerar a organização local do acesso.
+                </p>
               </div>
             </section>
 
@@ -433,12 +483,11 @@ useEffect(() => {
                   </li>
                   <li className="flex gap-2">
                     <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-[#7C3AED]" />
-                    O registro precisa possuir CBO profissional compatível.
+                    A metodologia oficial também prevê validação da equipe e dos CBOs profissionais elegíveis.
                   </li>
                   <li className="flex gap-2">
                     <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-[#7C3AED]" />
-                    Registros sem tipo de demanda ou CBO válido não entram no
-                    cálculo.
+                    Esta tela apresenta uma apuração operacional a partir dos tipos de atendimento identificados no relatório PEC importado; ela não substitui o resultado oficial do SIAPS. Confirme o período, a equipe e os filtros/CBOs usados no relatório.
                   </li>
                 </ul>
               </div>

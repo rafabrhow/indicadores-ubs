@@ -6,12 +6,12 @@ import Link from "next/link";
 import {
   ArrowLeft,
   HeartPulse,
-  Loader2,
 } from "lucide-react";
 
 import {
   sendPasswordResetEmail,
   signInWithEmailAndPassword,
+  signOut,
 } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
 
@@ -29,17 +29,6 @@ export default function LoginPage() {
   const [sucesso, setSucesso] = useState("");
   const [enviandoRecuperacao, setEnviandoRecuperacao] = useState(false);
 
-  /**
-   * Realiza o login através do Firebase Authentication.
-   *
-   * Depois de autenticar, buscamos o documento do usuário
-   * no Firestore para descobrir:
-   *
-   * - nome
-   * - perfil
-   * - UBS vinculada
-   * - situação da conta
-   */
   async function handleRecuperarSenha() {
     setErro("");
     setSucesso("");
@@ -55,7 +44,6 @@ export default function LoginPage() {
 
     try {
       await sendPasswordResetEmail(auth, emailInformado);
-
       setSucesso(
         "Enviamos um link de recuperação para o seu e-mail. Verifique também a caixa de spam."
       );
@@ -84,22 +72,17 @@ export default function LoginPage() {
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-
     setErro("");
     setCarregando(true);
 
     try {
-      // 1. Autentica o usuário no Firebase
       const resultado = await signInWithEmailAndPassword(
         auth,
         email.trim(),
         senha
       );
 
-      const uid = resultado.user.uid;
-
-      // 2. Busca o cadastro do usuário no Firestore
-      const usuarioRef = doc(db, "usuarios", uid);
+      const usuarioRef = doc(db, "usuarios", resultado.user.uid);
       const usuarioSnap = await getDoc(usuarioRef);
 
       if (!usuarioSnap.exists()) {
@@ -110,26 +93,46 @@ export default function LoginPage() {
 
       const usuario = usuarioSnap.data();
 
-      // 3. Verifica se a conta está ativa
       if (usuario.ativo !== true) {
         throw new Error(
-          "Esta conta está desativada. Procure o administrador da UBS."
+          "Esta conta está desativada. Procure o administrador responsável."
         );
       }
 
-      // 4. Verifica se existe uma UBS vinculada
-      if (!usuario.ubsId) {
-        throw new Error(
-          "Este usuário ainda não está vinculado a uma UBS."
-        );
+      if (usuario.perfil === "administrador_municipal") {
+        const municipio =
+          typeof usuario.municipio === "string" ? usuario.municipio.trim() : "";
+        const uf =
+          typeof usuario.uf === "string" ? usuario.uf.trim().toUpperCase() : "";
+
+        if (!municipio || !/^[A-Z]{2}$/.test(uf)) {
+          throw new Error(
+            "O cadastro administrativo está incompleto. Procure o suporte."
+          );
+        }
+
+        router.replace("/admin");
+        return;
       }
 
-      // 5. Login concluído
-      // Neste momento vamos apenas encaminhar para o início.
-      router.push("/dashboard");
+      if (
+        !["enfermeira", "acs"].includes(usuario.perfil) ||
+        typeof usuario.ubsId !== "string" ||
+        !usuario.ubsId.trim()
+      ) {
+        throw new Error("Este usuário não possui um vínculo válido com uma UBS.");
+      }
 
+      router.push(usuario.perfil === "acs" ? "/acs" : "/dashboard");
     } catch (error: unknown) {
       console.error("Erro no login:", error);
+
+      // Evita deixar uma sessão inválida aberta após falha na validação.
+      try {
+        await signOut(auth);
+      } catch (signOutError) {
+        console.error("Erro ao encerrar sessão inválida:", signOutError);
+      }
 
       if (error instanceof Error) {
         setErro(error.message);
@@ -153,12 +156,8 @@ export default function LoginPage() {
   return (
     <main className="min-h-screen bg-[#F8F7FF] px-6 py-8">
       <div className="mx-auto flex min-h-[calc(100vh-4rem)] max-w-[1100px] items-center justify-center">
-
         <div className="grid w-full overflow-hidden rounded-3xl bg-white shadow-xl md:grid-cols-2">
-
-          {/* Área de apresentação */}
           <div className="hidden bg-[#7C3AED] p-10 text-white md:flex md:flex-col md:justify-between">
-
             <div>
               <Link
                 href="/"
@@ -173,35 +172,28 @@ export default function LoginPage() {
               </div>
 
               <h1 className="text-4xl font-bold tracking-tight">
-                Indicadores-UBS 
+                Indicadores-UBS
               </h1>
 
               <p className="mt-4 max-w-md text-lg leading-relaxed text-white/85">
-                Gestão e acompanhamento dos indicadores da Atenção
-                Primária à Saúde.
+                Gestão e acompanhamento dos indicadores da Atenção Primária à Saúde.
               </p>
             </div>
 
             <p className="text-sm text-white/70">
-              Acesso seguro para profissionais autorizados. V5
+              Acesso seguro para profissionais autorizados. V.7
             </p>
           </div>
 
-          {/* Formulário */}
           <div className="p-8 md:p-12">
-
             <div className="mb-8">
-              <h2 className="text-3xl font-bold text-[#211A4A]">
-                Entrar
-              </h2>
-
+              <h2 className="text-3xl font-bold text-[#211A4A]">Entrar</h2>
               <p className="mt-2 text-gray-500">
                 Acesse sua conta para continuar.
               </p>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-5">
-
               <div>
                 <label
                   htmlFor="email"
@@ -209,7 +201,6 @@ export default function LoginPage() {
                 >
                   E-mail
                 </label>
-
                 <input
                   id="email"
                   type="email"
@@ -229,7 +220,6 @@ export default function LoginPage() {
                 >
                   Senha
                 </label>
-
                 <input
                   id="senha"
                   type="password"
@@ -261,11 +251,9 @@ export default function LoginPage() {
               >
                 Entrar
               </button>
-
             </form>
 
             <div className="mt-6 flex flex-col gap-3 text-center text-sm">
-
               <button
                 type="button"
                 onClick={handleRecuperarSenha}
@@ -279,15 +267,10 @@ export default function LoginPage() {
                 Ainda não possui uma conta?
               </p>
 
-              <button
-                type="button"
-                className="font-semibold text-[#211A4A] hover:underline"
-              >
-                Criar conta
-              </button>
-
+              <p className="text-xs text-gray-400">
+                O cadastro de profissionais é feito por um administrador autorizado.
+              </p>
             </div>
-
           </div>
         </div>
       </div>

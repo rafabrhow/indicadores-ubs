@@ -48,7 +48,7 @@ export default function Home() {
 
             <div className="min-w-0 flex-1">
               <h3 className="text-base font-bold text-[#211A4A]">
-                Enfermeira
+                Administrador(a)/Enfermeiro(a)
               </h3>
 
               <p className="mt-1 text-sm leading-5 text-slate-500">
