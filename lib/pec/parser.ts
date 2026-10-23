@@ -48,6 +48,84 @@ function normalizarCabecalho(valor: string) {
   return limpar(valor);
 }
 
+/**
+ * Lê CSV delimitado sem depender de split, respeitando campos entre aspas,
+ * aspas escapadas (""), quebras de linha dentro de campos e delimitadores
+ * presentes no conteúdo de um campo.
+ *
+ * O PEC normalmente exporta arquivos separados por ponto e vírgula. A função
+ * é intencionalmente pequena para não adicionar uma dependência ao projeto.
+ */
+function parsearCSV(conteudo: string, delimitador = ";"): string[][] {
+  const linhas: string[][] = [];
+  let linha: string[] = [];
+  let campo = "";
+  let dentroDeAspas = false;
+  let aspasFechadas = false;
+
+  for (let i = 0; i < conteudo.length; i++) {
+    const caractere = conteudo[i];
+    const proximo = conteudo[i + 1];
+
+    if (dentroDeAspas) {
+      if (caractere === '"') {
+        if (proximo === '"') {
+          campo += '"';
+          i++;
+        } else {
+          dentroDeAspas = false;
+          aspasFechadas = true;
+        }
+      } else {
+        campo += caractere;
+      }
+      continue;
+    }
+
+    if (caractere === '"') {
+      // Uma aspa abre um campo citado apenas no início do campo (ignorando
+      // espaços iniciais); aspas soltas em campos sem citação são inválidas.
+      if (campo.trim() === "" && !aspasFechadas) {
+        campo = "";
+        dentroDeAspas = true;
+      } else {
+        throw new Error(`CSV inválido: aspa inesperada na posição ${i + 1}.`);
+      }
+    } else if (caractere === delimitador) {
+      linha.push(campo);
+      campo = "";
+      aspasFechadas = false;
+    } else if (caractere === "\n" || caractere === "\r") {
+      // CRLF conta como uma única quebra de registro.
+      if (caractere === "\r" && proximo === "\n") i++;
+      linha.push(campo);
+      linhas.push(linha);
+      linha = [];
+      campo = "";
+      aspasFechadas = false;
+    } else if (aspasFechadas && !/\s/.test(caractere)) {
+      throw new Error(
+        `CSV inválido: conteúdo inesperado após o fechamento de aspas na posição ${i + 1}.`
+      );
+    } else if (!aspasFechadas) {
+      campo += caractere;
+    }
+  }
+
+  if (dentroDeAspas) {
+    throw new Error("CSV inválido: existe um campo com aspas não fechadas.");
+  }
+
+  // Inclui a última linha mesmo quando o arquivo não termina com quebra de
+  // linha e preserva a última coluna vazia quando há delimitador final.
+  if (campo.length > 0 || linha.length > 0 || conteudo.length > 0) {
+    linha.push(campo);
+    linhas.push(linha);
+  }
+
+  return linhas;
+}
+
 function encontrarLinhaCabecalho(linhas: string[][]) {
   return linhas.findIndex(
     (linha) =>
@@ -124,11 +202,11 @@ function extrairPor(linhas: string[][]) {
  * de chamar esta função.
  */
 export function analisarCSVPEC(conteudo: string): ResultadoPEC {
-  const linhas = conteudo
-    .replace(/\r\n/g, "\n")
-    .replace(/\r/g, "\n")
-    .split("\n")
-    .map((linha) => linha.split(";"));
+  if (!conteudo.trim()) {
+    throw new Error("O arquivo CSV está vazio.");
+  }
+
+  const linhas = parsearCSV(conteudo.replace(/^\uFEFF/, ""));
 
   const indiceCabecalho = encontrarLinhaCabecalho(linhas);
 

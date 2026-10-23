@@ -11,10 +11,10 @@ async function gerarCodigoUnico(ubsId: string): Promise<string> {
   for (let tentativa = 0; tentativa < 10; tentativa++) {
     const codigo = gerarCodigoAcesso();
 
+    // O login procura códigos em todas as UBS; a geração também precisa
+    // garantir unicidade global para evitar colisões entre territórios.
     const existente = await adminDb
-      .collection("ubs")
-      .doc(ubsId)
-      .collection("acs")
+      .collectionGroup("acs")
       .where("codigoAcesso", "==", codigo)
       .limit(1)
       .get();
@@ -111,6 +111,26 @@ export async function POST(request: Request) {
       return NextResponse.json(
         { sucesso: false, mensagem: "UBS não encontrada." },
         { status: 404 }
+      );
+    }
+
+    // Uma microárea só pode ter um ACS ativo por vez.
+    // O cadastro inativo é preservado para manter o histórico; um novo ACS
+    // pode assumir a mesma microárea depois da inativação do anterior.
+    const responsavelAtivo = await ubsRef
+      .collection("acs")
+      .where("microareaId", "==", microareaId)
+      .where("ativo", "==", true)
+      .limit(1)
+      .get();
+
+    if (!responsavelAtivo.empty) {
+      return NextResponse.json(
+        {
+          sucesso: false,
+          mensagem: "Já existe um ACS ativo nesta microárea. Inative o responsável atual antes de cadastrar um substituto.",
+        },
+        { status: 409 }
       );
     }
 

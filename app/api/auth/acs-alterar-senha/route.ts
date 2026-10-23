@@ -46,10 +46,23 @@ export async function POST(request: Request) {
       );
     }
 
+    const usuarioSnap = await adminDb.collection("usuarios").doc(decoded.uid).get();
+    const usuario = usuarioSnap.data();
+    if (
+      !usuarioSnap.exists ||
+      usuario?.ativo !== true ||
+      usuario?.perfil !== "acs"
+    ) {
+      return NextResponse.json(
+        { sucesso: false, mensagem: "Seu acesso está desativado ou não está autorizado." },
+        { status: 403 }
+      );
+    }
+
     const resultado = await adminDb
       .collectionGroup("acs")
       .where("uid", "==", decoded.uid)
-      .limit(1)
+      .limit(2)
       .get();
 
     if (resultado.empty) {
@@ -59,10 +72,27 @@ export async function POST(request: Request) {
       );
     }
 
+    if (resultado.size > 1) {
+      console.error("Mais de um cadastro ACS encontrado para o mesmo UID.");
+      return NextResponse.json(
+        { sucesso: false, mensagem: "Não foi possível validar o cadastro. Procure a administração." },
+        { status: 409 }
+      );
+    }
+
     const acsRef = resultado.docs[0].ref;
     const acs = resultado.docs[0].data();
 
-    if (acs.ativo !== true) {
+    const ubsIdCadastro =
+      typeof acs.ubsId === "string" && acs.ubsId
+        ? acs.ubsId
+        : resultado.docs[0].ref.parent.parent?.id;
+
+    if (
+      acs.ativo !== true ||
+      !ubsIdCadastro ||
+      usuario.ubsId !== ubsIdCadastro
+    ) {
       return NextResponse.json(
         { sucesso: false, mensagem: "Seu acesso está desativado." },
         { status: 403 }
@@ -87,10 +117,7 @@ export async function POST(request: Request) {
       senhaAlteradaEm: new Date(),
     });
 
-    const ubsId =
-      typeof acs.ubsId === "string" && acs.ubsId
-        ? acs.ubsId
-        : acsRef.parent.parent?.id;
+    const ubsId = ubsIdCadastro;
 
     await adminDb.collection("usuarios").doc(decoded.uid).set(
       {
@@ -99,7 +126,6 @@ export async function POST(request: Request) {
         email: "",
         perfil: "acs",
         ubsId: ubsId || "",
-        ativo: true,
         primeiroAcesso: false,
         atualizadoEm: new Date(),
       },

@@ -13,12 +13,14 @@ import {
   MapPin,
   ShieldCheck,
   UsersRound,
+  UserRoundCog,
 } from "lucide-react";
 
 import { useAuth } from "@/context/AuthContext";
 import { auth } from "@/lib/firebase";
 import LoadingBrasil360 from "@/components/ui/LoadingBrasil360";
 import AdminMunicipalReports from "@/components/admin/AdminMunicipalReports";
+import AdminInfoButton from "@/components/admin/AdminInfoButton";
 
 interface UBSCriada {
   id: string;
@@ -87,15 +89,19 @@ export default function AdminMunicipalPanel({ mode }: { mode: "overview" | "conf
   useEffect(() => {
     if (!preferenciasCarregadas) return;
     try {
+      // Mantém compatibilidade com as chaves antigas e sincroniza a preferência global.
       window.localStorage.setItem("brasil360:admin:tamanhoFonte", tamanhoFonteAdmin);
       window.localStorage.setItem("brasil360:admin:fonte", fonteAdmin);
+      window.localStorage.setItem("brasil360_tamanho_fonte_v1", tamanhoFonteAdmin);
+      const fonteGlobal = fonteAdmin === "sistema" ? "padrao" : fonteAdmin.toLowerCase().replace("trebuchet ms", "trebuchet");
+      window.localStorage.setItem("brasil360_fonte_sistema_v1", fonteGlobal);
+      window.dispatchEvent(new Event("brasil360:config-fonte"));
     } catch (error) {
       console.warn("Não foi possível salvar as preferências de acessibilidade:", error);
     }
   }, [tamanhoFonteAdmin, fonteAdmin, preferenciasCarregadas]);
 
   const estiloAcessibilidade = {
-    zoom: tamanhoFonteAdmin === "pequena" ? "0.9" : tamanhoFonteAdmin === "grande" ? "1.1" : tamanhoFonteAdmin === "extra-grande" ? "1.2" : "1",
     fontFamily: fonteAdmin === "sistema"
       ? "inherit"
       : fonteAdmin === "Trebuchet MS"
@@ -114,7 +120,6 @@ export default function AdminMunicipalPanel({ mode }: { mode: "overview" | "conf
   const [erroUnidades, setErroUnidades] = useState("");
   const [nomeEnfermeira, setNomeEnfermeira] = useState("");
   const [emailEnfermeira, setEmailEnfermeira] = useState("");
-  const [ubsSelecionada, setUbsSelecionada] = useState("");
   const [salvandoEnfermeira, setSalvandoEnfermeira] = useState(false);
   const [erroEnfermeira, setErroEnfermeira] = useState("");
   const [sucessoEnfermeira, setSucessoEnfermeira] = useState("");
@@ -274,11 +279,10 @@ export default function AdminMunicipalPanel({ mode }: { mode: "overview" | "conf
     const nome = nomeEnfermeira.trim();
     const email = emailEnfermeira.trim().toLowerCase();
 
-    if (!nome || !email || !ubsSelecionada) {
-      setErroEnfermeira("Preencha nome, e-mail e UBS.");
+    if (!nome || !email) {
+      setErroEnfermeira("Preencha nome e e-mail profissional.");
       return;
     }
-
     setSalvandoEnfermeira(true);
 
     try {
@@ -292,7 +296,10 @@ export default function AdminMunicipalPanel({ mode }: { mode: "overview" | "conf
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ nome, email, ubsId: ubsSelecionada }),
+        body: JSON.stringify({
+          nome,
+          email,
+        }),
       });
       const dados = await resposta.json();
 
@@ -301,12 +308,9 @@ export default function AdminMunicipalPanel({ mode }: { mode: "overview" | "conf
       }
 
       setEnfermeiraCriada(dados.enfermeira);
-      setSucessoEnfermeira(
-        "Enfermeira cadastrada. Ela deverá usar “Esqueci minha senha” na tela de login para definir a própria senha."
-      );
+      setSucessoEnfermeira("Enfermeira cadastrada. Ela deverá usar “Esqueci minha senha” na tela de login para definir a própria senha.");
       setNomeEnfermeira("");
       setEmailEnfermeira("");
-      setUbsSelecionada("");
     } catch (error) {
       console.error("Erro ao cadastrar enfermeira:", error);
       setErroEnfermeira(
@@ -327,6 +331,7 @@ export default function AdminMunicipalPanel({ mode }: { mode: "overview" | "conf
   const itensMenu = [
     { label: "Visão geral", icon: LayoutDashboard, caminho: "/admin", ativo: mode === "overview" },
     { label: "Relatórios", icon: ClipboardList, caminho: "/admin/relatorios", ativo: mode === "reports" },
+    { label: "Profissionais", icon: UserRoundCog, caminho: "/admin/profissionais", ativo: false },
     { label: "Configuração", icon: ShieldCheck, caminho: "/admin/config", ativo: mode === "config" },
     { label: "Sair", icon: LogOut, caminho: "sair", ativo: false },
   ];
@@ -392,7 +397,7 @@ export default function AdminMunicipalPanel({ mode }: { mode: "overview" | "conf
 
         <nav
           aria-label="Navegação administrativa"
-          className="fixed inset-x-0 bottom-0 z-50 grid grid-cols-4 border-t border-[#E7E2F2] bg-white/95 px-2 pb-[max(env(safe-area-inset-bottom),8px)] pt-2 shadow-[0_-8px_24px_rgba(33,26,74,0.08)] backdrop-blur-md lg:hidden"
+          className="fixed inset-x-0 bottom-0 z-50 grid grid-cols-5 border-t border-[#E7E2F2] bg-white/95 px-2 pb-[max(env(safe-area-inset-bottom),8px)] pt-2 shadow-[0_-8px_24px_rgba(33,26,74,0.08)] backdrop-blur-md lg:hidden"
         >
           {itensMenu.map((item) => {
             const Icone = item.icon;
@@ -417,9 +422,14 @@ export default function AdminMunicipalPanel({ mode }: { mode: "overview" | "conf
               <p className="text-[11px] font-semibold text-white/85">
                 Administração municipal
               </p>
-              <h1 className="mt-1 text-xl font-bold tracking-tight drop-shadow-sm sm:text-2xl">
-                {mode === "overview" ? "Visão geral municipal" : mode === "config" ? "Configuração" : "Relatórios municipais"}
-              </h1>
+              <div className="mt-1 flex items-center gap-2">
+                <h1 className="text-xl font-bold tracking-tight drop-shadow-sm sm:text-2xl">
+                  {mode === "overview" ? "Visão geral municipal" : mode === "config" ? "Configuração" : "Relatórios municipais"}
+                </h1>
+                <AdminInfoButton titulo={mode === "config" ? "Configuração municipal" : mode === "overview" ? "Visão geral municipal" : "Relatórios municipais"}>
+                  {mode === "config" ? "Área para administrar os cadastros e vínculos de UBS e enfermeiras do município autorizado. Confira os dados antes de salvar alterações." : mode === "overview" ? "Resumo administrativo das unidades e dos dados consolidados disponíveis para o município." : "Consulte resultados consolidados por UBS e competência. A ausência de resultado não significa desempenho zero, e os indicadores não são recalculados nesta tela."}
+                </AdminInfoButton>
+              </div>
               <p className="mt-1 text-[10px] text-white/90 sm:text-xs">
                 {usuario.municipio} — {usuario.uf}
               </p>
@@ -684,25 +694,13 @@ export default function AdminMunicipalPanel({ mode }: { mode: "overview" | "conf
                   </div>
                   <div>
                     <h2 className="text-sm font-bold text-[#211A4A]">
-                      Cadastrar enfermeira responsável
+                      Cadastrar enfermeira
                     </h2>
                     <p className="mt-1 text-xs leading-relaxed text-gray-500">
-                      A conta será vinculada à UBS selecionada. A profissional definirá a própria senha pela opção “Esqueci minha senha” no login.
+                      Cadastre uma nova profissional. O vínculo com a UBS é gerenciado na tela Profissionais.
                     </p>
                   </div>
                 </div>
-
-                {erroUnidades && (
-                  <div role="alert" className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-xs text-red-700">
-                    {erroUnidades}
-                  </div>
-                )}
-
-                {unidades.length === 0 && !carregandoUnidades && !erroUnidades && (
-                  <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-800">
-                    Cadastre uma UBS antes de criar a conta da enfermeira.
-                  </div>
-                )}
 
                 <form onSubmit={cadastrarEnfermeira} className="mt-5 space-y-4">
                   <div>
@@ -737,29 +735,6 @@ export default function AdminMunicipalPanel({ mode }: { mode: "overview" | "conf
                     />
                   </div>
 
-                  <div>
-                    <label htmlFor="ubsSelecionada" className="mb-2 block text-[11px] font-semibold text-[#211A4A]">
-                      UBS de responsabilidade
-                    </label>
-                    <select
-                      id="ubsSelecionada"
-                      value={ubsSelecionada}
-                      onChange={(event) => setUbsSelecionada(event.target.value)}
-                      required
-                      disabled={carregandoUnidades || unidades.length === 0}
-                      className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-[#7C3AED] focus:ring-2 focus:ring-[#7C3AED]/20 disabled:bg-gray-50"
-                    >
-                      <option value="">
-                        {carregandoUnidades ? "Carregando UBS..." : "Selecione uma UBS"}
-                      </option>
-                      {unidades.map((unidade) => (
-                        <option key={unidade.id} value={unidade.id}>
-                          {unidade.nome}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
                   {erroEnfermeira && (
                     <div role="alert" className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
                       {erroEnfermeira}
@@ -777,7 +752,7 @@ export default function AdminMunicipalPanel({ mode }: { mode: "overview" | "conf
                         <div className="mt-3 space-y-1 text-xs">
                           <p><strong>Nome:</strong> {enfermeiraCriada.nome}</p>
                           <p><strong>E-mail:</strong> {enfermeiraCriada.email}</p>
-                          <p><strong>UBS:</strong> {enfermeiraCriada.ubsNome}</p>
+                          <p><strong>Vínculo:</strong> Sem UBS vinculada. Faça o vínculo na tela Profissionais.</p>
                           <p className="break-all"><strong>UID:</strong> {enfermeiraCriada.uid}</p>
                         </div>
                       )}
@@ -786,7 +761,7 @@ export default function AdminMunicipalPanel({ mode }: { mode: "overview" | "conf
 
                   <button
                     type="submit"
-                    disabled={salvandoEnfermeira || carregandoUnidades || unidades.length === 0}
+                    disabled={salvandoEnfermeira}
                     className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#7C3AED] px-5 py-3 text-xs font-semibold text-white shadow-sm transition hover:bg-[#6D28D9] disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     <Mail size={15} />

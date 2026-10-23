@@ -295,10 +295,7 @@ const pendentesPratica = {
     return NextResponse.json(
       {
         sucesso: false,
-        mensagem:
-          error instanceof Error
-            ? error.message
-            : "Não foi possível calcular o relatório C5.",
+        mensagem: "Não foi possível calcular o relatório C5.",
       },
       { status: 500 }
     );

@@ -250,7 +250,6 @@ export async function GET(request: NextRequest) {
         : new Date();
 
     const resultado = avaliarC7(registros, referencia);
-
     /*
      * Mantemos a resposta compatível com a página atual do C7.
      * Nenhuma alteração na interface é necessária nesta etapa.

@@ -86,7 +86,36 @@ function limparData(valor: string) {
 function normalizarMicroarea(valor: string) {
   return (valor || "").replace(/^"+|"+$/g, "").trim();
 }
+/**
+ * Valida a data de geração do relatório PEC.
+ * Rejeita datas ausentes, formatos inválidos e datas inexistentes,
+ * evitando o uso silencioso da data atual como referência.
+ */
+function validarDataGeracaoPEC(valor: unknown): Date {
+  const texto = typeof valor === "string" ? valor : "";
+  const match = texto.match(/(\d{2})\/(\d{2})\/(\d{4})/);
 
+  if (!match) {
+    throw new Error("Data de geração do relatório PEC ausente ou inválida.");
+  }
+
+  const dia = Number(match[1]);
+  const mes = Number(match[2]);
+  const ano = Number(match[3]);
+
+  const data = new Date(ano, mes - 1, dia);
+
+  const dataValida =
+    data.getFullYear() === ano &&
+    data.getMonth() === mes - 1 &&
+    data.getDate() === dia;
+
+  if (!dataValida) {
+    throw new Error("Data de geração do relatório PEC inválida.");
+  }
+
+  return data;
+}
 /**
  * Converte a primeira data DD/MM/AAAA encontrada em um valor
  * do relatório para uso como referência do indicador.
@@ -95,17 +124,31 @@ function dataReferenciaC2(valor: unknown): Date {
   const texto = typeof valor === "string" ? valor : "";
   const match = texto.match(/(\d{2})\/(\d{2})\/(\d{4})/);
 
-  if (!match) return new Date();
+  if (!match) {
+    throw new Error(
+      "Não foi possível identificar a data de geração do relatório PEC para o indicador C2."
+    );
+  }
 
-  const data = new Date(
-    Number(match[3]),
-    Number(match[2]) - 1,
-    Number(match[1]),
-  );
+  const dia = Number(match[1]);
+  const mes = Number(match[2]);
+  const ano = Number(match[3]);
 
-  return Number.isNaN(data.getTime()) ? new Date() : data;
+  const data = new Date(ano, mes - 1, dia);
+
+  const dataValida =
+    data.getFullYear() === ano &&
+    data.getMonth() === mes - 1 &&
+    data.getDate() === dia;
+
+  if (!dataValida) {
+    throw new Error(
+      "A data de geração do relatório PEC é inválida para o indicador C2."
+    );
+  }
+
+  return data;
 }
-
 /**
  * Converte a data de referência para a competência mensal YYYY-MM.
  */
@@ -116,26 +159,39 @@ function competenciaC2(valor: unknown): string {
     data.getMonth() + 1,
   ).padStart(2, "0")}`;
 }
-
 /**
  * Converte a primeira data DD/MM/AAAA encontrada em um valor
  * do relatório para uso como referência do C3.
  */
-function dataReferenciaC3(valor: unknown, fallback = new Date()): Date {
+function dataReferenciaC3(valor: unknown): Date {
   const texto = typeof valor === "string" ? valor : "";
   const match = texto.match(/(\d{2})\/(\d{2})\/(\d{4})/);
 
-  if (!match) return fallback;
+  if (!match) {
+    throw new Error(
+      "Não foi possível identificar a data de geração do relatório PEC para o indicador C3."
+    );
+  }
 
-  const data = new Date(
-    Number(match[3]),
-    Number(match[2]) - 1,
-    Number(match[1]),
-  );
+  const dia = Number(match[1]);
+  const mes = Number(match[2]);
+  const ano = Number(match[3]);
 
-  return Number.isNaN(data.getTime()) ? fallback : data;
+  const data = new Date(ano, mes - 1, dia);
+
+  const dataValida =
+    data.getFullYear() === ano &&
+    data.getMonth() === mes - 1 &&
+    data.getDate() === dia;
+
+  if (!dataValida) {
+    throw new Error(
+      "A data de geração do relatório PEC é inválida para o indicador C3."
+    );
+  }
+
+  return data;
 }
-
 /**
  * Converte a data de referência para a competência mensal YYYY-MM.
  */
@@ -147,19 +203,34 @@ function competenciaC3(valor: unknown): string {
   ).padStart(2, "0")}`;
 }
 
-function dataReferenciaC4(valor: unknown, fallback = new Date()): Date {
+function dataReferenciaC4(valor: unknown): Date {
   const texto = typeof valor === "string" ? valor : "";
   const match = texto.match(/(\d{2})\/(\d{2})\/(\d{4})/);
 
-  if (!match) return fallback;
+  if (!match) {
+    throw new Error(
+      "Não foi possível identificar a data de geração do relatório PEC para o indicador C4."
+    );
+  }
 
-  const data = new Date(
-    Number(match[3]),
-    Number(match[2]) - 1,
-    Number(match[1]),
-  );
+  const dia = Number(match[1]);
+  const mes = Number(match[2]);
+  const ano = Number(match[3]);
 
-  return Number.isNaN(data.getTime()) ? fallback : data;
+  const data = new Date(ano, mes - 1, dia);
+
+  const dataValida =
+    data.getFullYear() === ano &&
+    data.getMonth() === mes - 1 &&
+    data.getDate() === dia;
+
+  if (!dataValida) {
+    throw new Error(
+      "A data de geração do relatório PEC é inválida para o indicador C4."
+    );
+  }
+
+  return data;
 }
 
 function competenciaC4(valor: unknown): string {
@@ -170,19 +241,33 @@ function competenciaC4(valor: unknown): string {
   ).padStart(2, "0")}`;
 }
 
-function dataReferenciaC5(valor: unknown, fallback = new Date()): Date {
+function dataReferenciaC5(valor: unknown): Date {
   const texto = typeof valor === "string" ? valor : "";
   const match = texto.match(/(\d{2})\/(\d{2})\/(\d{4})/);
+  if (!match) {
+    throw new Error(
+      "Não foi possível identificar a data de geração do relatório PEC para o indicador C5."
+    );
+  }
 
-  if (!match) return fallback;
+  const dia = Number(match[1]);
+  const mes = Number(match[2]);
+  const ano = Number(match[3]);
 
-  const data = new Date(
-    Number(match[3]),
-    Number(match[2]) - 1,
-    Number(match[1]),
-  );
+  const data = new Date(ano, mes - 1, dia);
 
-  return Number.isNaN(data.getTime()) ? fallback : data;
+  const dataValida =
+    data.getFullYear() === ano &&
+    data.getMonth() === mes - 1 &&
+    data.getDate() === dia;
+
+  if (!dataValida) {
+    throw new Error(
+      "A data de geração do relatório PEC é inválida para o indicador C5."
+    );
+  }
+
+  return data;
 }
 
 function competenciaC5(valor: unknown): string {
@@ -193,20 +278,33 @@ function competenciaC5(valor: unknown): string {
   ).padStart(2, "0")}`;
 }
 
-
-function dataReferenciaC6(valor: unknown, fallback = new Date()): Date {
+function dataReferenciaC6(valor: unknown): Date {
   const texto = typeof valor === "string" ? valor : "";
   const match = texto.match(/(\d{2})\/(\d{2})\/(\d{4})/);
+  if (!match) {
+    throw new Error(
+      "Não foi possível identificar a data de geração do relatório PEC para o indicador C6."
+    );
+  }
 
-  if (!match) return fallback;
+  const dia = Number(match[1]);
+  const mes = Number(match[2]);
+  const ano = Number(match[3]);
 
-  const data = new Date(
-    Number(match[3]),
-    Number(match[2]) - 1,
-    Number(match[1]),
-  );
+  const data = new Date(ano, mes - 1, dia);
 
-  return Number.isNaN(data.getTime()) ? fallback : data;
+  const dataValida =
+    data.getFullYear() === ano &&
+    data.getMonth() === mes - 1 &&
+    data.getDate() === dia;
+
+  if (!dataValida) {
+    throw new Error(
+      "A data de geração do relatório PEC é inválida para o indicador C6."
+    );
+  }
+
+  return data;
 }
 
 function competenciaC6(valor: unknown): string {
@@ -217,19 +315,43 @@ function competenciaC6(valor: unknown): string {
   ).padStart(2, "0")}`;
 }
 
-function dataReferenciaC7(valor: unknown, fallback = new Date()): Date {
+function dataReferenciaC7(valor: unknown): Date {
+  if (valor instanceof Date && !Number.isNaN(valor.getTime())) {
+    return valor;
+  }
   const texto = typeof valor === "string" ? valor : "";
   const match = texto.match(/(\d{2})\/(\d{2})\/(\d{4})/);
-  if (!match) return fallback;
-  const data = new Date(Number(match[3]), Number(match[2]) - 1, Number(match[1]));
-  return Number.isNaN(data.getTime()) ? fallback : data;
+
+  if (!match) {
+    throw new Error(
+      "Não foi possível identificar a data de geração do relatório PEC para o indicador C7."
+    );
+  }
+
+  const dia = Number(match[1]);
+  const mes = Number(match[2]);
+  const ano = Number(match[3]);
+
+  const data = new Date(ano, mes - 1, dia);
+
+  const dataValida =
+    data.getFullYear() === ano &&
+    data.getMonth() === mes - 1 &&
+    data.getDate() === dia;
+
+  if (!dataValida) {
+    throw new Error(
+      "A data de geração do relatório PEC é inválida para o indicador C7."
+    );
+  }
+
+  return data;
 }
 
 function competenciaC7(valor: unknown): string {
   const data = dataReferenciaC7(valor);
   return `${data.getFullYear()}-${String(data.getMonth() + 1).padStart(2, "0")}`;
 }
-
 
 function dataMillisC7(valor: unknown): number {
   if (valor instanceof Date) return valor.getTime();
@@ -686,32 +808,77 @@ const PESOS_C7 = {
   D: 20,
 } as const;
 
+
 function contribuicaoPacienteC7(avaliacao: any | null) {
+  const vazia = {
+    elegivel: false,
+    praticas: {
+      A: { elegivel: false, atingida: false },
+      B: { elegivel: false, atingida: false },
+      C: { elegivel: false, atingida: false },
+      D: { elegivel: false, atingida: false },
+    },
+  };
+
   if (!avaliacao || typeof avaliacao !== "object") {
-    return {
-      elegivel: false,
-      praticas: {
-        A: { elegivel: false, atingida: false },
-        B: { elegivel: false, atingida: false },
-        C: { elegivel: false, atingida: false },
-        D: { elegivel: false, atingida: false },
-      },
-    };
+    return vazia;
   }
 
-  const idade = Number(avaliacao.idade ?? 0);
-  const elegivel = idade >= 9 && idade <= 69;
+  const normalizar = (valor: unknown) =>
+    String(valor ?? "")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .trim()
+      .toLowerCase();
+
+  const idade = Number(avaliacao.idade);
+  const nome = normalizar(avaliacao.nome);
+  const sexo = normalizar(avaliacao.sexo);
+  const identidadeGenero = normalizar(
+    avaliacao.identidadeGenero
+  );
+
+  const feminino = sexo === "feminino";
+
+  const homemTrans =
+    sexo === "masculino" &&
+    identidadeGenero.includes("homem transgenero");
+
+  const mulherTrans =
+    feminino &&
+    identidadeGenero.includes("mulher transgenero");
+
+  const elegivel =
+    nome !== "" &&
+    Number.isFinite(idade) &&
+    (feminino || homemTrans) &&
+    !mulherTrans &&
+    idade >= 9 &&
+    idade <= 69;
 
   return {
     elegivel,
     praticas: {
-      A: { elegivel: idade >= 25 && idade <= 64, atingida: Boolean(avaliacao.praticas?.A) },
-      B: { elegivel: idade >= 9 && idade <= 14, atingida: Boolean(avaliacao.praticas?.B) },
-      C: { elegivel: idade >= 14 && idade <= 69, atingida: Boolean(avaliacao.praticas?.C) },
-      D: { elegivel: idade >= 50 && idade <= 69, atingida: Boolean(avaliacao.praticas?.D) },
+      A: {
+        elegivel: elegivel && idade >= 25 && idade <= 64,
+        atingida: Boolean(avaliacao.praticas?.A),
+      },
+      B: {
+        elegivel: elegivel && idade >= 9 && idade <= 14,
+        atingida: Boolean(avaliacao.praticas?.B),
+      },
+      C: {
+        elegivel: elegivel && idade >= 14 && idade <= 69,
+        atingida: Boolean(avaliacao.praticas?.C),
+      },
+      D: {
+        elegivel: elegivel && idade >= 50 && idade <= 69,
+        atingida: Boolean(avaliacao.praticas?.D),
+      },
     },
   };
 }
+
 
 function atualizarResumoAgregadoC7(
   resultadoAnterior: Record<string, unknown>,
@@ -820,18 +987,8 @@ async function atualizarC7ComCache(
   competencia: string;
   quantidadeImportacoesConsideradas: number;
   quantidadeRegistrosConsolidados: number;
-}> {   const inicioC7Detalhado = Date.now();
+}> {   const cacheAtual = await buscarCacheC7(ubsId);
 
-  const marcarC7 = (etapa: string) => {
-    console.log(
-      `[C7 DETALHE] ${etapa}: ${Date.now() - inicioC7Detalhado}ms`,
-    );
-  };
-  const cacheAtual = await buscarCacheC7(ubsId);
-
-marcarC7(
-  `Cache principal carregado (${cacheAtual ? "existe" : "não existe"})`,
-);
 
 const importacoesIdsAtuais = cacheAtual
   ? [
@@ -902,11 +1059,6 @@ const importacoesIdsAtuais = cacheAtual
   const importacoesRemovidas = cacheAtual.importacoesIds.filter(
     (id) => !importacoesIdsAtuais.includes(id),
   );
-  console.log(
-  `[C7 JANELA] atuais=${importacoesIdsAtuais.length}, ` +
-    `novas=${novasImportacoes.length}, ` +
-    `removidas=${importacoesRemovidas.length}`,
-);
 
   if (novasImportacoes.length === 0 && importacoesRemovidas.length === 0) {
     const resultadoCache = {
@@ -915,8 +1067,8 @@ const importacoesIdsAtuais = cacheAtual
     };
 
     return {
-      resultado: resultadoCache,
-      competencia: cacheAtual.competencia ?? competenciaC7(new Date()),
+      resultado: resultadoCache,  
+      competencia: cacheAtual.competencia ?? competenciaC7(novaReferencia),
       quantidadeImportacoesConsideradas:
         cacheAtual.quantidadeImportacoesConsideradas,
       quantidadeRegistrosConsolidados: cacheAtual.quantidadePacientes,
@@ -1015,9 +1167,6 @@ if (idsCacheAindaNecessarios.length > 0) {
   }
 }
 
-marcarC7(
-  `Pacientes do cache carregados (${cachePacientes.size} documentos de ${idsAfetadosArray.length} afetados)`,
-);
 
   const pacientesAtualizados: CacheC7Paciente[] = [];
   const alteracoes: Array<{ anterior: any | null; atual: any | null }> = [];
@@ -1557,13 +1706,6 @@ if (
           registros,
         );
       }
-
-      console.log(
-        `[C7 RECONSTRUÇÃO] ` +
-          `importacao=${importacaoId}, ` +
-          `pacientes=${blocoIds.length}, ` +
-          `registrosLidos=${snapshot.size}`,
-      );
     }
   }
 
@@ -1706,74 +1848,53 @@ if (
     });
   }
 }
-    marcarC7(
-    `Pacientes recalculados (${pacientesAtualizados.length})`,
-  );
+    
+  // Recalcula o resumo oficial a partir das importações PEC atuais.
+  const consolidadoFinal = await calcularC7Consolidado(ubsRef);
 
-  const resultadoAnterior = cacheAtual.resultado ?? {};
-  const resultadoAtualizado = atualizarResumoAgregadoC7(
-    resultadoAnterior,
-    alteracoes,
-  );
-    marcarC7("Agregado C7 recalculado");
+  if (!consolidadoFinal) {
+    throw new Error(
+      "Não foi possível recalcular o resumo consolidado do C7.",
+    );
+  }
+
+  const resultadoAtualizado = consolidadoFinal.resultado;
+
+  
   const resultadoParaCache = Object.fromEntries(
-  Object.entries({
-    sucesso: true,
-    ...resultadoAtualizado,
-    referencia: novaReferencia.toISOString(),
-    pacientes: [],
-  }).filter(([, valor]) => valor !== undefined),
-);
-
-  const idsParaRemover = new Set<string>();
-  for (const paciente of pacientesAtualizados) {
-    if (paciente.avaliacao === null && paciente.dados) {
-      continue;
-    }
-  }
-
-  const idsExistentes = new Set(pacientesAtualizados.map((item) => item.pacienteId));
-  for (const id of idsAfetadosArray) {
-    if (importacoesRemovidas.length > 0 && !idsExistentes.has(id)) {
-      idsParaRemover.add(id);
-    }
-  }
-
-  if (idsParaRemover.size > 0) {
-    await removerPacientesCacheC7(ubsId, Array.from(idsParaRemover));
-  }
-
-  await salvarPacientesCacheC7(ubsId, pacientesAtualizados);
-    marcarC7(
-    `Cache dos pacientes salvo (${pacientesAtualizados.length} documentos)`,
+    Object.entries({
+      ...resultadoAtualizado,
+      referencia: resultadoAtualizado.referencia,
+      pacientes: [],
+    }).filter(([, valor]) => valor !== undefined),
   );
 
-  const competencia = competenciaC7(novaReferencia);
+  const competenciaFinal = consolidadoFinal.competencia;
 
-await salvarCacheC7(ubsId, {
-  competencia,
-  referencia: novaReferencia.toISOString(),
-  importacoesIds: importacoesIdsAtuais,
-  quantidadeImportacoesConsideradas: importacoesIdsAtuais.length,
-  quantidadePacientes: Number(resultadoAtualizado.totalElegiveis ?? 0),
-  resultado: resultadoParaCache,
-});
-  marcarC7("Cache principal salvo");
-return {
-  resultado: {
-    sucesso: true,
-    ...resultadoAtualizado,
-    referencia: novaReferencia.toISOString(),
-    pacientes: [],
-  } as ReturnType<typeof avaliarC7>,
-  competencia,
-  quantidadeImportacoesConsideradas: importacoesIdsAtuais.length,
-  quantidadeRegistrosConsolidados: Number(
-    resultadoAtualizado.totalElegiveis ?? 0,
-  ),
-};
-}
+  await salvarCacheC7(ubsId, {
+    competencia: competenciaFinal,
+    referencia: resultadoAtualizado.referencia,
+    importacoesIds: importacoesIdsAtuais,
+    quantidadeImportacoesConsideradas:
+      consolidadoFinal.quantidadeImportacoesConsideradas,
+    quantidadePacientes:
+      consolidadoFinal.quantidadeRegistrosConsolidados,
+    resultado: resultadoParaCache,
+  });
 
+  
+  return {
+    resultado: {
+      ...resultadoAtualizado,
+      pacientes: [],
+    } as ReturnType<typeof avaliarC7>,
+    competencia: competenciaFinal,
+    quantidadeImportacoesConsideradas:
+      consolidadoFinal.quantidadeImportacoesConsideradas,
+    quantidadeRegistrosConsolidados:
+      consolidadoFinal.quantidadeRegistrosConsolidados,
+  };
+  }
 
 function idadeEmAnosC6(valor: unknown): number {
   const texto = String(valor ?? "").trim().toLowerCase();
@@ -1792,30 +1913,6 @@ type PacienteC6Importacao = ReturnType<typeof avaliarC6> & {
 export async function POST(request: Request) {
   try {
 
-    const inicioPerformance = Date.now();
-
-    const leiturasFirestore = {
-  usuario: 0,
-  ubs: 0,
-  pacientesExistentes: 0,
-};
-
-const registrarLeitura = (
-  origem: keyof typeof leiturasFirestore,
-  quantidade: number,
-) => {
-  leiturasFirestore[origem] += quantidade;
-
-  console.log(
-    `[LEITURAS ROTA] ${origem}: +${quantidade} | total=${leiturasFirestore[origem]}`,
-  );
-};
-
-const marcarPerformance = (etapa: string) => {
-  console.log(
-    `[PERFORMANCE] ${etapa}: ${Date.now() - inicioPerformance}ms`,
-  );
-};
     const authorization = request.headers.get("authorization");
     if (!authorization?.startsWith("Bearer ")) {
       return NextResponse.json(
@@ -1829,11 +1926,7 @@ const marcarPerformance = (etapa: string) => {
 
     const usuarioRef = adminDb.collection("usuarios").doc(decoded.uid);
     const usuarioSnap = await usuarioRef.get();
-      registrarLeitura(
-  "usuario",
-  usuarioSnap.exists ? 1 : 0,
-);
-
+      
     if (!usuarioSnap.exists) {
       return NextResponse.json(
         { sucesso: false, mensagem: "Usuário não encontrado." },
@@ -1877,13 +1970,49 @@ const marcarPerformance = (etapa: string) => {
         { status: 400 }
       );
     }
+    // Limite de segurança para arquivos CSV do PEC
+const TAMANHO_MAXIMO_CSV = 20 * 1024 * 1024; // 20 MB
 
-    const bytes = Buffer.from(await arquivo.arrayBuffer());
-    const conteudoLatin1 = bytes.toString("latin1");
-    const conteudoUTF8 = bytes.toString("utf8");
-    const conteudo = conteudoLatin1.includes("e-SUS")
-      ? conteudoLatin1
-      : conteudoUTF8;
+if (arquivo.size === 0) {
+  return NextResponse.json(
+    {
+      sucesso: false,
+      mensagem: "O arquivo CSV está vazio.",
+    },
+    { status: 400 }
+  );
+}
+
+if (arquivo.size > TAMANHO_MAXIMO_CSV) {
+  return NextResponse.json(
+    {
+      sucesso: false,
+      mensagem:
+        "O arquivo CSV excede o limite permitido de 20 MB.",
+    },
+    { status: 413 }
+  );
+}
+
+    
+const bytes = Buffer.from(await arquivo.arrayBuffer());
+const conteudoLatin1 = bytes.toString("latin1");
+const conteudoUTF8 = bytes.toString("utf8");
+const conteudo = conteudoLatin1.includes("e-SUS")
+  ? conteudoLatin1
+  : conteudoUTF8;
+
+// Validação básica do conteúdo recebido
+if (!conteudo.trim()) {
+  return NextResponse.json(
+    {
+      sucesso: false,
+      mensagem: "O arquivo CSV não contém dados.",
+    },
+    { status: 400 }
+  );
+}
+
 
     /*
      * O relatório "Atendimento Individual - Analítico" é consolidado por
@@ -2008,7 +2137,22 @@ const marcarPerformance = (etapa: string) => {
       });
     }
 
-    const resultado = analisarCSVPEC(conteudo);
+    let resultado: ReturnType<typeof analisarCSVPEC>;
+
+try {
+  resultado = analisarCSVPEC(conteudo);
+} catch (error) {
+  console.error("Falha ao interpretar CSV PEC:", error);
+  const mensagem = "O arquivo CSV possui formato inválido ou não pôde ser interpretado.";
+
+  return NextResponse.json(
+    {
+      sucesso: false,
+      mensagem,
+    },
+    { status: 400 }
+  );
+}
 
     if (resultado.linhas.length === 0) {
       return NextResponse.json(
@@ -2017,16 +2161,11 @@ const marcarPerformance = (etapa: string) => {
       );
     }
 
-    marcarPerformance("CSV analisado");
-
+    
     const ubsId = usuario.ubsId;
     const ubsRef = adminDb.collection("ubs").doc(ubsId);
     const ubsSnap = await ubsRef.get();
-    registrarLeitura(
-  "ubs",
-  ubsSnap.exists ? 1 : 0,
-);
-
+    
     if (!ubsSnap.exists) {
       return NextResponse.json(
         { sucesso: false, mensagem: "UBS não encontrada." },
@@ -2036,36 +2175,49 @@ const marcarPerformance = (etapa: string) => {
 
     const importacaoRef = ubsRef.collection("importacoesPEC").doc();
 
-    const codigoIndicadorOrigem = classificarOrigemTematica(
-      resultado.listaTematica
-    );
+   
+const codigoIndicadorOrigem = classificarOrigemTematica(
+  resultado.listaTematica
+);
 
-    const fonteC5HipertensaoAtiva = ehFonteC5HipertensaoAtiva(
-      resultado.listaTematica,
-      resultado.grupoCondicoes,
-      resultado.filtroProblemas
-    );
+try {
+  validarDataGeracaoPEC(resultado.geradoEm);
+} catch {
+  return NextResponse.json(
+    {
+      sucesso: false,
+      mensagem:
+        "A data de geração do relatório PEC está ausente ou inválida. Exporte novamente o relatório e tente importar.",
+    },
+    { status: 400 }
+  );
+}
 
-    await importacaoRef.set({
-      id: importacaoRef.id,
-      ubsId,
-      arquivoNome: arquivo.name,
-      listaTematica: resultado.listaTematica,
-      grupoCondicoes: resultado.grupoCondicoes,
-      filtroProblemas: resultado.filtroProblemas,
-      equipeResponsavel: resultado.equipeResponsavel,
-      microareas: resultado.microareas,
-      periodoAtendimento: resultado.periodoAtendimento,
-      geradoEm: resultado.geradoEm,
-      geradoPor: resultado.por,
-      quantidadeRegistros: resultado.linhas.length,
-      codigoIndicadorOrigem,
-      fonteC5HipertensaoAtiva,
-      status: "processando",
-      criadoEm: FieldValue.serverTimestamp(),
-      criadoPor: decoded.uid,
-    });
+const fonteC5HipertensaoAtiva = ehFonteC5HipertensaoAtiva(
+  resultado.listaTematica,
+  resultado.grupoCondicoes,
+  resultado.filtroProblemas
+);
 
+await importacaoRef.set({
+  id: importacaoRef.id,
+  ubsId,
+  arquivoNome: arquivo.name,
+  listaTematica: resultado.listaTematica,
+  grupoCondicoes: resultado.grupoCondicoes,
+  filtroProblemas: resultado.filtroProblemas,
+  equipeResponsavel: resultado.equipeResponsavel,
+  microareas: resultado.microareas,
+  periodoAtendimento: resultado.periodoAtendimento,
+  geradoEm: resultado.geradoEm,
+  geradoPor: resultado.por,
+  quantidadeRegistros: resultado.linhas.length,
+  codigoIndicadorOrigem,
+  fonteC5HipertensaoAtiva,
+  status: "processando",
+  criadoEm: FieldValue.serverTimestamp(),
+  criadoPor: decoded.uid,
+});
     /*
      * O C2 é calculado diretamente das linhas do CSV recém-importado.
      *
@@ -2677,7 +2829,9 @@ const marcarPerformance = (etapa: string) => {
     }
 
     if (ehFonteC7) {
-      const referenciaC7 = dataReferenciaC7(resultado.geradoEm);
+
+const referenciaC7 = dataReferenciaC7(resultado.geradoEm);
+
       const registrosC7 = resultado.linhas.map((registro) => {
         const { base, especificos } = separarDadosBase(registro);
         return { ...base, ...especificos, ...registro, dadosBase: base, dadosEspecificos: especificos };
@@ -2780,10 +2934,6 @@ for (
   const pacientesSnap = await pacientesCollection
     .where(FieldPath.documentId(), "in", blocoIds)
     .get();
-registrarLeitura(
-  "pacientesExistentes",
-  pacientesSnap.size,
-);
   for (const pacienteDoc of pacientesSnap.docs) {
     pacientesExistentes.set(
       pacienteDoc.id,
@@ -3009,8 +3159,7 @@ batch.set(historicoPacienteRef, {
 
     await confirmarBatch();
 
-    marcarPerformance("Pacientes e registros gravados");
-
+    
     /*
      * Mantém o total persistente de pacientes da UBS.
      * Não precisamos reler toda a coleção de pacientes.
@@ -3419,25 +3568,7 @@ batch.set(historicoPacienteRef, {
   const resultadoC7Consolidado =
     c7Consolidado.resultado;
 
-  console.log(
-    "[C7 DASHBOARD] Valores enviados para o cache:",
-    {
-      competencia:
-        c7Consolidado.competencia,
-      totalElegiveis:
-        resultadoC7Consolidado.totalElegiveis ?? 0,
-      pontuacao:
-        resultadoC7Consolidado.pontuacao ?? null,
-      pontuacaoParcial:
-        resultadoC7Consolidado.pontuacaoParcial ?? 0,
-      pontosDisponiveis:
-        resultadoC7Consolidado.pontosDisponiveis ?? 0,
-      classificacao:
-        resultadoC7Consolidado.classificacao ??
-        "Indisponível",
-    },
-  );
-
+  
   const versaoDashboard =
     await atualizarIndicadorCacheDashboard(
       ubsId,
@@ -3486,21 +3617,8 @@ batch.set(historicoPacienteRef, {
       c7Consolidado.competencia,
     );
 
-  console.log(
-    "[C7 DASHBOARD] Cache atualizado:",
-    {
-      versaoDashboard,
-      totalElegiveis:
-        resultadoC7Consolidado
-          .totalElegiveis ?? 0,
-      pontuacao:
-        resultadoC7Consolidado
-          .pontuacao ?? null,
-    },
-  );
-}
-     marcarPerformance("C7 consolidado concluído");
-
+  }
+     
         const cacheSituacao =
   await buscarCacheSituacaoPacientes(ubsId);
 
@@ -3535,7 +3653,6 @@ const categoriasCache =
  * incrementais.
  */
 if (!dadosCache || !categoriasCache) {
-  console.log("[DEBUG SITUAÇÃO] ENTROU NO CÁLCULO COMPLETO");
   const situacaoPacientes =
     await calcularSituacaoPacientes(ubsId);
 
@@ -3692,16 +3809,8 @@ if (!dadosCache || !categoriasCache) {
       _categoriasPorPaciente:
         categoriasPorPaciente,
     },
-  ); marcarPerformance("Situação dos pacientes concluída");
-}
-marcarPerformance("IMPORTAÇÃO TOTAL");
-  console.log(
-  `[LEITURAS ROTA] TOTAL DIRETO: ${Object.values(leiturasFirestore).reduce(
-    (total, quantidade) => total + quantidade,
-    0,
-  )}`,
-);
-
+  ); }
+  
     return NextResponse.json({
       sucesso: true,
       importacao: {
@@ -3752,10 +3861,7 @@ marcarPerformance("IMPORTAÇÃO TOTAL");
     return NextResponse.json(
       {
         sucesso: false,
-        mensagem:
-          error instanceof Error
-            ? error.message
-            : "Não foi possível importar o CSV do PEC.",
+        mensagem: "Não foi possível importar o CSV do PEC. Verifique o arquivo e tente novamente.",
       },
       { status: 500 }
     );

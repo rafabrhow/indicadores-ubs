@@ -149,10 +149,7 @@ export async function POST(
     return NextResponse.json(
       {
         sucesso: false,
-        mensagem:
-          error instanceof Error
-            ? `Erro ao registrar visita: ${error.message}`
-            : "Não foi possível registrar a visita.",
+        mensagem: "Não foi possível registrar a visita. Tente novamente ou procure o suporte.",
       },
       { status: 500 },
     );

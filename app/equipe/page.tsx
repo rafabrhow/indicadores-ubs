@@ -12,6 +12,7 @@ import {
   History,
   Settings,
   UserRound,
+  UserRoundX,
   X,
   ChevronRight,
   HeartPulse,
@@ -19,15 +20,6 @@ import {
 
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-
-import {
-  collection,
-  getCountFromServer,
-  getDocs,
-  getFirestore,
-  query,
-  where,
-} from "firebase/firestore";
 
 import { useAuth } from "@/context/AuthContext";
 import { useDashboardCache } from "@/context/DashboardCacheContext";
@@ -105,120 +97,97 @@ export default function EquipePage() {
   } | null>(null);
   const [carregandoResumoMicroarea, setCarregandoResumoMicroarea] =
     useState(false);
+  const [inativandoACS, setInativandoACS] = useState(false);
+  const [erroInativacaoACS, setErroInativacaoACS] = useState("");
 
-  // Busca os ACS diretamente na coleção da UBS.
-  // O ubsId é extraído antes da função assíncrona para que o TypeScript
-  // saiba que ele existe durante toda a execução do carregamento.
-  useEffect(() => {
-    const ubsId =
-      typeof usuario?.ubsId === "string"
-        ? usuario.ubsId.trim()
-        : "";
+  async function inativarACSSelecionado() {
+    if (!acsSelecionado || !acsSelecionado.ativo) return;
 
-    // A página Equipe é exclusiva da enfermeira gestora.
-    // O ACS deve permanecer na área operacional.
-    if (carregando || !ubsId || usuario?.perfil !== "enfermeira") {
+    const confirmar = window.confirm(
+      `Inativar o ACS ${acsSelecionado.nome}? A pessoa perderá o acesso, mas os pacientes, a microárea, os indicadores e o histórico serão preservados. Depois será possível cadastrar outro ACS para a mesma microárea.`
+    );
+    if (!confirmar) return;
+
+    const usuarioFirebase = auth.currentUser;
+    if (!usuarioFirebase) {
+      setErroInativacaoACS("Sua sessão expirou. Entre novamente.");
       return;
     }
+
+    try {
+      setInativandoACS(true);
+      setErroInativacaoACS("");
+      const token = await usuarioFirebase.getIdToken();
+      const resposta = await fetch("/api/acs/inativar", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ uid: acsSelecionado.uid }),
+        cache: "no-store",
+      });
+      const dados = await resposta.json();
+      if (!resposta.ok || !dados.sucesso) {
+        throw new Error(dados.mensagem || "Não foi possível inativar o ACS.");
+      }
+
+      const ubsId = typeof usuario?.ubsId === "string" ? usuario.ubsId : "";
+      const novaLista = acs.map((item) =>
+        item.uid === acsSelecionado.uid ? { ...item, ativo: false } : item
+      );
+      setAcs(novaLista);
+      if (ubsId) setCache(`equipe:acs:${ubsId}`, novaLista);
+      setAcsSelecionado((atual) => atual ? { ...atual, ativo: false } : atual);
+    } catch (error) {
+      setErroInativacaoACS(
+        error instanceof Error ? error.message : "Não foi possível inativar o ACS."
+      );
+    } finally {
+      setInativandoACS(false);
+    }
+  }
+
+  // Busca a equipe por uma API autenticada que devolve apenas campos permitidos.
+  // Os documentos ACS não são mais lidos diretamente pelo navegador, pois contêm senhaHash.
+  useEffect(() => {
+    const ubsId = typeof usuario?.ubsId === "string" ? usuario.ubsId.trim() : "";
+
+    if (carregando || !ubsId || usuario?.perfil !== "enfermeira") return;
 
     let cancelado = false;
 
     async function carregarACS() {
       try {
         setCarregandoACS(true);
+        const lista = await carregarCache<ACS[]>(`equipe:acs:${ubsId}`, async () => {
+          const usuarioFirebase = auth.currentUser;
+          if (!usuarioFirebase) throw new Error("Sua sessão expirou. Entre novamente.");
 
-        const lista = await carregarCache<ACS[]>(
-          `equipe:acs:${ubsId}`,
-          async () => {
-            // Usa a instância padrão do Firestore já inicializada em lib/firebase.ts.
-            const db = getFirestore();
+          const token = await usuarioFirebase.getIdToken();
+          const resposta = await fetch("/api/acs/listar", {
+            method: "GET",
+            headers: { Authorization: `Bearer ${token}` },
+            cache: "no-store",
+          });
+          const dados = await resposta.json();
+          if (!resposta.ok || !dados.sucesso || !Array.isArray(dados.acs)) {
+            throw new Error(dados.mensagem || "Não foi possível carregar a equipe.");
+          }
+          return dados.acs as ACS[];
+        });
 
-            const referencia = collection(
-              db,
-              "ubs",
-              ubsId,
-              "acs"
-            );
-
-            const snapshot = await getDocs(referencia);
-
-            const listaBase: ACS[] = snapshot.docs.map((doc) => {
-              const dados = doc.data();
-
-              return {
-                id: doc.id,
-                uid:
-                  typeof dados.uid === "string"
-                    ? dados.uid
-                    : doc.id,
-                nome:
-                  typeof dados.nome === "string"
-                    ? dados.nome
-                    : "ACS sem nome",
-                microareaId:
-                  typeof dados.microareaId === "string"
-                    ? dados.microareaId
-                    : "",
-                ativo: dados.ativo === true,
-                codigoAcesso:
-                  typeof dados.codigoAcesso === "string"
-                    ? dados.codigoAcesso
-                    : undefined,
-                ultimoAcesso: formatarUltimoAcesso(dados.ultimoAcesso),
-                quantidadePacientes:
-                  typeof dados.quantidadePacientes === "number"
-                    ? dados.quantidadePacientes
-                    : undefined,
-              };
-            });
-
-            // A quantidade de pacientes é calculada pela microárea real
-            // vinculada a cada ACS. O count evita baixar toda a coleção de pacientes.
-            return Promise.all(
-              listaBase.map(async (item) => {
-                if (!item.microareaId) {
-                  return { ...item, quantidadePacientes: 0 };
-                }
-
-                const pacientesQuery = query(
-                  collection(db, "ubs", ubsId, "pacientes"),
-                  where("microareaId", "==", item.microareaId),
-                );
-
-                const contador = await getCountFromServer(pacientesQuery);
-
-                return {
-                  ...item,
-                  quantidadePacientes: contador.data().count,
-                };
-              }),
-            );
-          },
-        );
-
-        if (cancelado) {
-          return;
-        }
-
-        setAcs(lista);
+        if (!cancelado) setAcs(lista);
       } catch (error) {
-        console.error(
-          "Erro ao carregar ACS da equipe:",
-          error
-        );
+        console.error("Erro ao carregar ACS da equipe:", error);
       } finally {
-        if (!cancelado) {
-          setCarregandoACS(false);
-        }
+        if (!cancelado) setCarregandoACS(false);
       }
     }
 
     carregarACS();
-
-    return () => {
-      cancelado = true;
-    };
-  }, [carregando, usuario?.ubsId, carregarCache]);
+    return () => { cancelado = true; };
+  }, [carregando, usuario?.ubsId, usuario?.perfil, carregarCache]);
 
   // O limite de 20 considera somente ACS ativos.
   const quantidadeACS = acs.filter(
@@ -281,6 +250,7 @@ export default function EquipePage() {
   async function abrirDetalhesACS(item: ACS) {
     setAcsSelecionado(item);
     setResumoMicroarea(null);
+    setErroInativacaoACS("");
 
     if (!item.uid) return;
 
@@ -849,10 +819,36 @@ export default function EquipePage() {
               </div>
             </div>
 
+            {acsSelecionado.ativo && (
+              <div className="mt-4 rounded-2xl border border-red-100 bg-red-50/70 p-3">
+                <button
+                  type="button"
+                  onClick={inativarACSSelecionado}
+                  disabled={inativandoACS}
+                  className="flex w-full items-center justify-center gap-2 rounded-xl border border-red-200 bg-white px-4 py-3 text-sm font-semibold text-red-700 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {inativandoACS ? (
+                    <Loader2 size={17} className="animate-spin" />
+                  ) : (
+                    <UserRoundX size={17} />
+                  )}
+                  {inativandoACS ? "Inativando ACS..." : "Inativar ACS"}
+                </button>
+                <p className="mt-2 text-xs leading-5 text-red-800">
+                  Os pacientes, a microárea, os indicadores e o histórico serão mantidos.
+                </p>
+                {erroInativacaoACS && (
+                  <p role="alert" className="mt-2 text-xs font-medium text-red-700">
+                    {erroInativacaoACS}
+                  </p>
+                )}
+              </div>
+            )}
+
             <div className="mt-5 flex gap-3">
               <button
                 type="button"
-                onClick={() => { setAcsSelecionado(null); setResumoMicroarea(null); }}
+                onClick={() => { setAcsSelecionado(null); setResumoMicroarea(null); setErroInativacaoACS(""); }}
                 className="flex-1 rounded-xl border border-gray-200 px-4 py-3 text-sm font-semibold text-gray-600 transition hover:bg-gray-50"
               >
                 Fechar
@@ -860,6 +856,7 @@ export default function EquipePage() {
 
               <button
                 type="button"
+                disabled={inativandoACS}
                 onClick={() => {
                   const uid = acsSelecionado.uid;
                   setAcsSelecionado(null);

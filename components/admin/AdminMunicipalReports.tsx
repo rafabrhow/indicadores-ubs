@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { auth } from "@/lib/firebase";
+import AdminInfoButton from "@/components/admin/AdminInfoButton";
 
 type UBS = {
   id: string;
@@ -310,10 +311,10 @@ export default function AdminMunicipalReports() {
       {!carregandoRelatorio && resposta && (
         <>
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            <ResumoCard titulo="Indicadores previstos" valor={String(resposta.resumo.totalIndicadores)} detalhe="C1–C7 e Saúde Bucal" cor="violeta" />
-            <ResumoCard titulo="Com resultado" valor={String(totalComResultado)} detalhe="Snapshot com dados agregados" cor="verde" />
-            <ResumoCard titulo="Sem resultado" valor={String(totalSemResultado)} detalhe="Não pontuado nesta competência" cor="ambar" />
-            <ResumoCard titulo="Com classificação" valor={String(totalClassificados)} detalhe="Classificação registrada no snapshot" cor="azul" />
+            <ResumoCard titulo="Indicadores previstos" valor={String(resposta.resumo.totalIndicadores)} detalhe="C1–C7 e Saúde Bucal" cor="violeta" explicacao="Conjunto de indicadores exibidos no relatório: C1 a C7 e Saúde Bucal." />
+            <ResumoCard titulo="Com resultado" valor={String(totalComResultado)} detalhe="Snapshot com dados agregados" cor="verde" explicacao="Indicadores que possuem resultado registrado no snapshot da UBS e da competência selecionadas." />
+            <ResumoCard titulo="Sem resultado" valor={String(totalSemResultado)} detalhe="Não pontuado nesta competência" cor="ambar" explicacao="Indicadores sem resultado disponível nesta competência. Ausência de resultado não significa desempenho zero." />
+            <ResumoCard titulo="Com classificação" valor={String(totalClassificados)} detalhe="Classificação registrada no snapshot" cor="azul" explicacao="Indicadores cujo snapshot contém uma classificação registrada. A classificação não é recalculada nesta tela." />
           </div>
 
           <div id="brasil360-relatorios-impressao" className="space-y-4">
@@ -347,7 +348,9 @@ export default function AdminMunicipalReports() {
                         <span className="text-[10px] font-extrabold tracking-wide text-slate-400">{indicador.codigo}</span>
                         <span className={`rounded-full px-2 py-0.5 text-[9px] font-semibold ${indicador.possuiResultado ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-500"}`}>{indicador.possuiResultado ? (indicador.classificacao || "Dados disponíveis") : "Sem resultado"}</span>
                       </div>
-                      <h4 className="mt-1 text-sm font-extrabold text-[#211A4A]">{indicador.nome}</h4>
+                      <div className="mt-1 flex items-center gap-1"><h4 className="text-sm font-extrabold text-[#211A4A]">{indicador.nome}</h4><AdminInfoButton titulo={`${indicador.codigo} — ${indicador.nome}`}>
+  {`${descricaoIndicador(indicador.codigo)} Os dados exibidos correspondem ao snapshot consolidado da UBS e da competência selecionadas. Se não houver resultado, isso não deve ser interpretado como zero.`}
+</AdminInfoButton></div>
                       <p className="mt-0.5 text-[10px] text-slate-500">{indicador.descricao}</p>
                     </div>
                   </div>
@@ -379,12 +382,27 @@ export default function AdminMunicipalReports() {
   );
 }
 
-function ResumoCard({ titulo, valor, detalhe, cor }: { titulo: string; valor: string; detalhe: string; cor: "violeta" | "verde" | "ambar" | "azul" }) {
+function ResumoCard({ titulo, valor, detalhe, cor, explicacao }: { titulo: string; valor: string; detalhe: string; cor: "violeta" | "verde" | "ambar" | "azul"; explicacao: string }) {
   const estilos = {
     violeta: "border-violet-200 bg-gradient-to-br from-white to-violet-50 text-violet-800",
     verde: "border-emerald-200 bg-gradient-to-br from-white to-emerald-50 text-emerald-800",
     ambar: "border-amber-200 bg-gradient-to-br from-white to-amber-50 text-amber-800",
     azul: "border-sky-200 bg-gradient-to-br from-white to-sky-50 text-sky-800",
   };
-  return <div className={`rounded-2xl border p-4 shadow-[0_5px_14px_rgba(15,23,42,0.05)] transition-all hover:-translate-y-0.5 hover:shadow-md ${estilos[cor]}`}><p className="text-xs font-semibold opacity-80">{titulo}</p><p className="mt-2 text-3xl font-extrabold">{valor}</p><p className="mt-1 text-[10px] opacity-70">{detalhe}</p></div>;
+  return <div className={`rounded-2xl border p-4 shadow-[0_5px_14px_rgba(15,23,42,0.05)] transition-all hover:-translate-y-0.5 hover:shadow-md ${estilos[cor]}`}><div className="flex items-center justify-between gap-2"><p className="text-xs font-semibold opacity-80">{titulo}</p><AdminInfoButton titulo={titulo}>{explicacao}</AdminInfoButton></div><p className="mt-2 text-3xl font-extrabold">{valor}</p><p className="mt-1 text-[10px] opacity-70">{detalhe}</p></div>;
+}
+
+
+function descricaoIndicador(codigo: string) {
+  const descricoes: Record<string, string> = {
+    C1: "Mais Acesso: apresenta a composição dos atendimentos programados e espontâneos considerados no indicador.",
+    C2: "Desenvolvimento Infantil: reúne os resultados consolidados de acompanhamento infantil disponíveis.",
+    C3: "Gestantes e Puerpério: reúne os resultados consolidados de acompanhamento pré-natal e puerpério disponíveis.",
+    C4: "Diabetes: reúne os resultados consolidados de acompanhamento de pessoas com diabetes disponíveis.",
+    C5: "Hipertensão: reúne os resultados consolidados de acompanhamento de pessoas com hipertensão disponíveis.",
+    C6: "Pessoa Idosa: reúne os resultados consolidados de acompanhamento da pessoa idosa disponíveis.",
+    C7: "Saúde da Mulher: reúne os resultados consolidados de acompanhamento da saúde da mulher disponíveis.",
+    BUCAL: "Saúde Bucal: apresenta práticas e registros odontológicos consolidados disponíveis.",
+  };
+  return descricoes[codigo] || "Resumo do indicador disponível para a UBS selecionada.";
 }

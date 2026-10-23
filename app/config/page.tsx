@@ -833,7 +833,7 @@ export default function ConfigPage() {
         aberto={modalImportarPEC}
         onFechar={() => setModalImportarPEC(false)}
         onConcluido={(resultado) => {
-          console.log("Importação PEC concluída:", resultado);
+          
         }}
       />
     </main>

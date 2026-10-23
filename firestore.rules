@@ -101,11 +101,9 @@ service cloud.firestore {
 
       match /acs/{acsId} {
 
-        // A equipe é administrada pela enfermeira.
-        allow read: if enfermeiraDaUBS(ubsId);
-
-        // Cadastro/alteração/exclusão pelo servidor.
-        allow create, update, delete: if false;
+        // Os documentos incluem credenciais (como senhaHash e codigoAcesso).
+        // A tela Equipe usa a API autenticada, que retorna somente campos permitidos.
+        allow read, create, update, delete: if false;
       }
 
 

@@ -50,13 +50,21 @@ export async function POST(request: Request) {
     const resultado = await adminDb
       .collectionGroup("acs")
       .where("codigoAcesso", "==", codigoAcesso)
-      .limit(1)
+      .limit(2)
       .get();
 
     if (resultado.empty) {
       return NextResponse.json(
         { sucesso: false, mensagem: "Código de acesso ou senha incorretos." },
         { status: 401 }
+      );
+    }
+
+    if (resultado.size > 1) {
+      console.error("Código de acesso duplicado cadastrado para ACS.");
+      return NextResponse.json(
+        { sucesso: false, mensagem: "Não foi possível validar o cadastro. Procure a administração." },
+        { status: 409 }
       );
     }
 
@@ -103,6 +111,24 @@ export async function POST(request: Request) {
       );
     }
 
+    // Não permita que o login reative uma conta desativada pela administração.
+    // Um documento ausente pode ser inicializado para cadastros legados, mas
+    // um documento existente precisa estar ativo e vinculado à mesma UBS.
+    const usuarioRef = adminDb.collection("usuarios").doc(acs.uid);
+    const usuarioSnap = await usuarioRef.get();
+    const usuarioExistente = usuarioSnap.data();
+    if (
+      !usuarioSnap.exists ||
+      usuarioExistente?.ativo !== true ||
+      usuarioExistente?.perfil !== "acs" ||
+      usuarioExistente?.ubsId !== ubsId
+    ) {
+      return NextResponse.json(
+        { sucesso: false, mensagem: "Seu acesso está desativado ou precisa ser validado pela administração." },
+        { status: 403 }
+      );
+    }
+
     const primeiroAcesso = acs.primeiroAcesso === true;
 
     // Registra o último acesso real do ACS no próprio cadastro da equipe.
@@ -112,14 +138,13 @@ export async function POST(request: Request) {
       ultimoAcesso: FieldValue.serverTimestamp(),
     });
 
-    await adminDb.collection("usuarios").doc(acs.uid).set(
+    await usuarioRef.set(
       {
         uid: acs.uid,
         nome: acs.nome,
         email: "",
         perfil: "acs",
         ubsId,
-        ativo: true,
         primeiroAcesso,
         atualizadoEm: new Date(),
       },

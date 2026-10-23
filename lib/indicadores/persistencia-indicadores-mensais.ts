@@ -50,28 +50,7 @@ export async function salvarResultadoIndicadorMensal(
   const caminho =
     `ubs/${resultado.ubsId}/resultadosIndicadores/${docId}`;
 
-  console.log(
-    "[PERSISTENCIA INDICADOR] INÍCIO",
-    {
-      codigo: codigoNormalizado,
-      competencia: competenciaNormalizada,
-      ubsId: resultado.ubsId,
-      docId,
-      caminho,
-      geradoEm:
-        typeof resultado.dados?.geradoEm === "string"
-          ? resultado.dados.geradoEm
-          : resultado.dados?.importacao &&
-              typeof resultado.dados.importacao === "object"
-            ? (
-                resultado.dados.importacao as {
-                  geradoEm?: unknown;
-                }
-              ).geradoEm
-            : null,
-    },
-  );
-
+  
   const referencia = adminDb
     .collection("ubs")
     .doc(resultado.ubsId)
@@ -89,15 +68,7 @@ export async function salvarResultadoIndicadorMensal(
     { merge: true },
   );
 
-  console.log(
-    "[PERSISTENCIA INDICADOR] GRAVADO COM SUCESSO",
-    {
-      codigo: codigoNormalizado,
-      competencia: competenciaNormalizada,
-      caminho,
-    },
-  );
-}
+  }
 
 /**
  * Recupera o resultado consolidado de um indicador em uma competência.

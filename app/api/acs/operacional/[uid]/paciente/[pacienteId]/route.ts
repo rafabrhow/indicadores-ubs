@@ -1195,10 +1195,7 @@ if (
     return NextResponse.json(
       {
         sucesso: false,
-        mensagem:
-          error instanceof Error
-            ? error.message
-            : "Não foi possível carregar a ficha do paciente.",
+        mensagem: "Não foi possível carregar a ficha do paciente. Tente novamente ou procure o suporte.",
       },
       { status: 500 }
     );

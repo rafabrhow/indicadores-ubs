@@ -4,9 +4,11 @@ import { useEffect } from "react";
 
 const CHAVE_FONTE = "brasil360_fonte_sistema_v1";
 const CHAVE_TAMANHO = "brasil360_tamanho_fonte_v1";
+const CHAVE_FONTE_LEGADA = "brasil360:admin:fonte";
+const CHAVE_TAMANHO_LEGADA = "brasil360:admin:tamanhoFonte";
 
 const FONTES: Record<string, string> = {
-  padrao:'ui-sans-serif, system-ui, sans-serif',
+  padrao: "ui-sans-serif, system-ui, sans-serif",
   arial: "Arial, sans-serif",
   verdana: "Verdana, sans-serif",
   tahoma: "Tahoma, sans-serif",
@@ -14,56 +16,53 @@ const FONTES: Record<string, string> = {
 };
 
 const TAMANHOS: Record<string, string> = {
-  pequena: "15px",
-  padrao: "17px",
-  grande: "19px",
-  "extra-grande": "22px",
+  pequena: "14px",
+  padrao: "16px",
+  grande: "18px",
+  "extra-grande": "20px",
 };
 
 const ESCALAS: Record<string, string> = {
-  pequena: "0.875",
+  pequena: "0.9",
   padrao: "1",
-  grande: "1.125",
-  "extra-grande": "1.25",
+  grande: "1.1",
+  "extra-grande": "1.2",
 };
+
+function normalizarFonte(valor: string | null): string {
+  if (!valor || valor === "sistema") return "padrao";
+  const fonte = valor.toLowerCase();
+  if (fonte === "trebuchet ms" || fonte === "trebuchet") return "trebuchet";
+  return ["arial", "verdana", "tahoma"].includes(fonte) ? fonte : "padrao";
+}
 
 export default function FonteSistemaGlobal() {
   useEffect(() => {
     function aplicarConfiguracoes() {
-      const fonteId =
-        window.localStorage.getItem(CHAVE_FONTE) || "padrao";
-
+      const fonteId = normalizarFonte(
+        window.localStorage.getItem(CHAVE_FONTE) || window.localStorage.getItem(CHAVE_FONTE_LEGADA),
+      );
       const tamanhoId =
-        window.localStorage.getItem(CHAVE_TAMANHO) || "padrao";
-
-      const familia = FONTES[fonteId] || FONTES.padrao;
-      const tamanho = TAMANHOS[tamanhoId] || TAMANHOS.padrao;
-      const escala = ESCALAS[tamanhoId] || ESCALAS.padrao;
-
+        window.localStorage.getItem(CHAVE_TAMANHO) ||
+        window.localStorage.getItem(CHAVE_TAMANHO_LEGADA) ||
+        "padrao";
+      const tamanhoValido = TAMANHOS[tamanhoId] ? tamanhoId : "padrao";
       const root = document.documentElement;
-
-      root.style.setProperty("--brasil360-font-family", familia);
-      root.style.setProperty("--brasil360-font-scale", escala);
-
-      root.style.fontFamily = familia;
-      root.style.fontSize = tamanho;
-
+      root.style.setProperty("--brasil360-font-family", FONTES[fonteId]);
+      root.style.setProperty("--brasil360-font-scale", ESCALAS[tamanhoValido]);
+      root.style.fontFamily = FONTES[fonteId];
+      root.style.fontSize = "16px";
+      root.style.zoom = ESCALAS[tamanhoValido];
       root.setAttribute("data-brasil360-fonte", fonteId);
-      root.setAttribute("data-brasil360-tamanho", tamanhoId);
+      root.setAttribute("data-brasil360-tamanho", tamanhoValido);
     }
-
     aplicarConfiguracoes();
-
-    const atualizar = () => aplicarConfiguracoes();
-
-    window.addEventListener("brasil360:config-fonte", atualizar);
-    window.addEventListener("storage", atualizar);
-
+    window.addEventListener("brasil360:config-fonte", aplicarConfiguracoes);
+    window.addEventListener("storage", aplicarConfiguracoes);
     return () => {
-      window.removeEventListener("brasil360:config-fonte", atualizar);
-      window.removeEventListener("storage", atualizar);
+      window.removeEventListener("brasil360:config-fonte", aplicarConfiguracoes);
+      window.removeEventListener("storage", aplicarConfiguracoes);
     };
   }, []);
-
   return null;
 }

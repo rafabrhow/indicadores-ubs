@@ -674,8 +674,7 @@ export async function calcularSituacaoPacientes(
     .collection("pacientes")
     .get();
 
-  console.log(`[LEITURAS SITUAÇÃO] Pacientes lidos: ${pacientesSnapshot.size}`);
-
+  
   /*
    * Os documentos de "registros" já carregam os dados necessários
    * para reconstruir o histórico do paciente:
@@ -692,9 +691,7 @@ export async function calcularSituacaoPacientes(
     .where("ubsId", "==", ubsId)
     .get();
 
-  console.log(`[LEITURAS SITUAÇÃO] Registros lidos: ${registrosSnapshot.size}`);
-  console.log(`[LEITURAS SITUAÇÃO] Total documentos lidos: ${pacientesSnapshot.size + registrosSnapshot.size}`);
-
+    
   const historicosPorPaciente = new Map<
     string,
     RegistroHistorico[]
@@ -962,21 +959,7 @@ const registrosSnapshot = {
   ),
 };
 
-console.log(
-  `[LEITURAS POR INDICADOR] ` +
-    registrosSnapshots
-      .map(
-        (item) =>
-          `${item.codigoIndicador}=${item.snapshots.reduce(
-            (total, snapshot) =>
-              total + snapshot.size,
-            0,
-          )}`,
-      )
-      .join(", "),
-);
-    console.log(`[LEITURAS SITUAÇÃO AFETADOS] Bloco ${Math.floor(inicio / 30) + 1}: pacientes=${pacientesSnapshot.size}, registros=${registrosSnapshot.size}, total=${pacientesSnapshot.size + registrosSnapshot.size}`);
-
+    
     const historicosPorPaciente = new Map<
       string,
       RegistroHistorico[]

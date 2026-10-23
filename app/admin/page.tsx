@@ -9,11 +9,13 @@ import {
   LayoutDashboard,
   LogOut,
   Settings2,
+  UserRoundCog,
 } from "lucide-react";
 
 import { useAuth } from "@/context/AuthContext";
 import { auth } from "@/lib/firebase";
 import LoadingBrasil360 from "@/components/ui/LoadingBrasil360";
+import AdminInfoButton from "@/components/admin/AdminInfoButton";
 
 interface IndicadorResumoUBS {
   codigo: string;
@@ -129,6 +131,7 @@ export default function AdminPage() {
   const itensMenu = [
     { label: "Visão geral", icon: LayoutDashboard, ativo: true, acao: "overview" },
     { label: "Relatórios", icon: ClipboardList, ativo: false, acao: "reports" },
+    { label: "Profissionais", icon: UserRoundCog, ativo: false, acao: "professionals" },
     { label: "Configuração", icon: Settings2, ativo: false, acao: "config" },
     { label: "Sair", icon: LogOut, ativo: false, acao: "sair" },
   ];
@@ -156,7 +159,7 @@ export default function AdminPage() {
                 <button
                   key={item.label}
                   type="button"
-                  onClick={item.acao === "overview" ? irParaSecao : item.acao === "config" ? () => router.push("/admin/config") : item.acao === "reports" ? () => router.push("/admin/relatorios") : undefined}
+                  onClick={item.acao === "overview" ? irParaSecao : item.acao === "config" ? () => router.push("/admin/config") : item.acao === "reports" ? () => router.push("/admin/relatorios") : item.acao === "professionals" ? () => router.push("/admin/profissionais") : undefined}
                   disabled={item.acao === "indisponivel"}
                   className={`mb-2 flex w-full items-center gap-2 rounded-lg px-2 py-3 text-left text-[10px] font-semibold ${
                     item.ativo
@@ -189,7 +192,7 @@ export default function AdminPage() {
 
         <nav
           aria-label="Navegação administrativa"
-          className="fixed inset-x-0 bottom-0 z-50 grid grid-cols-4 border-t border-[#E7E2F2] bg-white/95 px-2 pb-[max(env(safe-area-inset-bottom),8px)] pt-2 shadow-[0_-8px_24px_rgba(33,26,74,0.08)] backdrop-blur-md lg:hidden"
+          className="fixed inset-x-0 bottom-0 z-50 grid grid-cols-5 border-t border-[#E7E2F2] bg-white/95 px-2 pb-[max(env(safe-area-inset-bottom),8px)] pt-2 shadow-[0_-8px_24px_rgba(33,26,74,0.08)] backdrop-blur-md lg:hidden"
         >
           {itensMenu.map((item) => {
             const Icone = item.icon;
@@ -221,7 +224,7 @@ export default function AdminPage() {
               <button
                 key={item.label}
                 type="button"
-                onClick={item.acao === "overview" ? irParaSecao : item.acao === "config" ? () => router.push("/admin/config") : item.acao === "reports" ? () => router.push("/admin/relatorios") : undefined}
+                onClick={item.acao === "overview" ? irParaSecao : item.acao === "config" ? () => router.push("/admin/config") : item.acao === "reports" ? () => router.push("/admin/relatorios") : item.acao === "professionals" ? () => router.push("/admin/profissionais") : undefined}
                 disabled={item.acao === "indisponivel"}
                 className={classes}
                 aria-disabled={item.acao === "indisponivel"}
@@ -276,17 +279,17 @@ export default function AdminPage() {
 
               <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
                 <div className="group relative overflow-hidden rounded-2xl border border-violet-200 bg-gradient-to-br from-white via-violet-50 to-violet-100/80 p-4 shadow-[0_6px_0_rgba(124,58,237,0.12),0_12px_22px_rgba(124,58,237,0.10)] transition duration-200 hover:-translate-y-1 hover:shadow-[0_8px_0_rgba(124,58,237,0.13),0_18px_28px_rgba(124,58,237,0.16)] before:pointer-events-none before:absolute before:-right-6 before:-top-8 before:h-24 before:w-24 before:rounded-full before:bg-white/70 before:blur-xl">
-                  <p className="relative text-xs font-semibold text-violet-700">UBS cadastradas</p>
+                  <div className="relative flex items-center justify-between gap-2"><p className="text-xs font-semibold text-violet-700">UBS cadastradas</p><AdminInfoButton titulo="UBS cadastradas" className="text-violet-700">Quantidade de unidades ativas cadastradas para o município do administrador.</AdminInfoButton></div>
                   <p className="relative mt-2 text-3xl font-extrabold text-violet-900">{carregandoUnidades ? "—" : unidades.length}</p>
                   <p className="relative mt-1 text-[10px] text-violet-700/80">Unidades ativas no município</p>
                 </div>
                 <div className="group relative overflow-hidden rounded-2xl border border-emerald-200 bg-gradient-to-br from-white via-emerald-50 to-emerald-100/80 p-4 shadow-[0_6px_0_rgba(5,150,105,0.12),0_12px_22px_rgba(5,150,105,0.10)] transition duration-200 hover:-translate-y-1 hover:shadow-[0_8px_0_rgba(5,150,105,0.13),0_18px_28px_rgba(5,150,105,0.16)] before:pointer-events-none before:absolute before:-right-6 before:-top-8 before:h-24 before:w-24 before:rounded-full before:bg-white/70 before:blur-xl">
-                  <p className="relative text-xs font-semibold text-emerald-700">Com dados consolidados</p>
+                  <div className="relative flex items-center justify-between gap-2"><p className="text-xs font-semibold text-emerald-700">Com dados consolidados</p><AdminInfoButton titulo="Com dados consolidados" className="text-emerald-700">Unidades que possuem snapshots consolidados disponíveis para consulta. Isso não significa que todos os indicadores tenham resultado.</AdminInfoButton></div>
                   <p className="relative mt-2 text-3xl font-extrabold text-emerald-800">{carregandoUnidades ? "—" : unidadesComDados}</p>
                   <p className="relative mt-1 text-[10px] text-emerald-800/80">Possuem snapshot de indicadores</p>
                 </div>
                 <div className="group relative overflow-hidden rounded-2xl border border-amber-200 bg-gradient-to-br from-white via-amber-50 to-amber-100/90 p-4 shadow-[0_6px_0_rgba(217,119,6,0.12),0_12px_22px_rgba(217,119,6,0.10)] transition duration-200 hover:-translate-y-1 hover:shadow-[0_8px_0_rgba(217,119,6,0.13),0_18px_28px_rgba(217,119,6,0.16)] before:pointer-events-none before:absolute before:-right-6 before:-top-8 before:h-24 before:w-24 before:rounded-full before:bg-white/70 before:blur-xl">
-                  <p className="relative text-xs font-semibold text-amber-800">Aguardando primeira importação</p>
+                  <div className="relative flex items-center justify-between gap-2"><p className="text-xs font-semibold text-amber-800">Aguardando primeira importação</p><AdminInfoButton titulo="Aguardando primeira importação" className="text-amber-800">Unidades que ainda não têm uma primeira importação de dados do PEC. A ausência de dados não deve ser interpretada como desempenho zero.</AdminInfoButton></div>
                   <p className="relative mt-2 text-3xl font-extrabold text-amber-800">{carregandoUnidades ? "—" : unidadesAguardando}</p>
                   <p className="relative mt-1 text-[10px] text-amber-800/80">Sem snapshot e sem total de pacientes registrado</p>
                 </div>
@@ -327,7 +330,7 @@ export default function AdminPage() {
                                 <Building2 size={18} />
                               </div>
                               <div className="min-w-0">
-                                <p className="truncate text-sm font-bold text-[#211A4A]">{unidade.nome}</p>
+                                <div className="flex items-center gap-1"><p className="truncate text-sm font-bold text-[#211A4A]">{unidade.nome}</p><AdminInfoButton titulo={`Situação da UBS ${unidade.nome}`}>O status informa se a unidade aguarda a primeira importação, possui dados consolidados ou precisa de atualização do snapshot. Os números refletem somente os dados agregados disponíveis.</AdminInfoButton></div>
                                 <p className="mt-1 text-[10px] text-gray-500">{unidade.municipio}/{unidade.uf}</p>
                                 <div className="mt-2 flex flex-wrap items-center gap-2">
                                   <span className={`rounded-full px-2.5 py-1 text-[10px] font-semibold ${aguardando ? "bg-amber-50 text-amber-700" : snapshotPendente ? "bg-orange-50 text-orange-700" : "bg-emerald-50 text-emerald-700"}`}>
@@ -338,8 +341,8 @@ export default function AdminPage() {
                               </div>
                             </div>
                             <div className="flex flex-wrap items-center gap-2 sm:justify-end">
-                              <span className="rounded-lg bg-slate-50 px-3 py-2 text-[10px] text-slate-600"><strong className="text-[#211A4A]">{unidade.indicadoresDisponiveis ?? 0}</strong> indicadores</span>
-                              <span className="rounded-lg bg-slate-50 px-3 py-2 text-[10px] text-slate-600">Pacientes: {unidade.pacientes == null ? "—" : unidade.pacientes}</span>
+                              <span className="inline-flex items-center gap-1 rounded-lg bg-slate-50 px-3 py-2 text-[10px] text-slate-600"><strong className="text-[#211A4A]">{unidade.indicadoresDisponiveis ?? 0}</strong> indicadores<AdminInfoButton titulo="Indicadores disponíveis">Quantidade de indicadores com resultado disponível no resumo consolidado desta UBS. Não representa necessariamente todos os indicadores previstos.</AdminInfoButton></span>
+                              <span className="inline-flex items-center gap-1 rounded-lg bg-slate-50 px-3 py-2 text-[10px] text-slate-600">Pacientes: {unidade.pacientes == null ? "—" : unidade.pacientes}<AdminInfoButton titulo="Pacientes cadastrados">Total agregado de pacientes informado para a UBS. O traço indica que o dado não está disponível; não equivale a zero.</AdminInfoButton></span>
                               <button type="button" onClick={() => router.push(`/admin/ubs/${encodeURIComponent(unidade.id)}`)} className="inline-flex items-center gap-1 rounded-lg bg-gradient-to-b from-[#8B5CF6] to-[#6D28D9] px-3 py-2 text-[10px] font-semibold text-white shadow-[0_4px_0_#5B21B6,0_7px_12px_rgba(109,40,217,0.20)] transition duration-150 hover:-translate-y-0.5 hover:shadow-[0_5px_0_#5B21B6,0_10px_16px_rgba(109,40,217,0.25)] active:translate-y-0.5 active:shadow-[0_2px_0_#5B21B6]">
                                 Ver detalhes <span aria-hidden="true">→</span>
                               </button>

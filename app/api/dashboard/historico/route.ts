@@ -218,10 +218,7 @@ export async function GET(request: Request) {
     return NextResponse.json(
       {
         sucesso: false,
-        mensagem:
-          error instanceof Error
-            ? error.message
-            : "Não foi possível carregar o histórico.",
+        mensagem: "Não foi possível carregar o histórico.",
       },
       { status: 500 },
     );

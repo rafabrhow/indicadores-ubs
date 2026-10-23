@@ -228,6 +228,20 @@ export async function GET(
     }
 
     const acs = acsSnap.data() || {};
+    if (acs.ativo !== true) {
+      return NextResponse.json(
+        { sucesso: false, mensagem: "O cadastro deste ACS está desativado." },
+        { status: 403 }
+      );
+    }
+
+    if (typeof acs.uid === "string" && acs.uid !== uid) {
+      return NextResponse.json(
+        { sucesso: false, mensagem: "O cadastro do ACS não corresponde ao usuário solicitado." },
+        { status: 403 }
+      );
+    }
+
     const microareaId = texto(acs.microareaId);
 
     const pacientesSnap = microareaId
