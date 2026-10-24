@@ -34,3 +34,24 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+
+## Painel comercial da desenvolvedora (nova área)
+
+A rota `/desenvolvedor` é separada do painel operacional `/admin`. A autorização da área comercial é validada no servidor com **duas verificações**: o UID precisa constar na variável de ambiente `DESENVOLVEDOR_UIDS` e o documento `usuarios/{uid}` precisa ter `perfil: "desenvolvedora"` e `ativo: true`.
+
+### Preparação da conta exclusiva
+
+1. Crie uma conta própria no Firebase Authentication (não reutilize a conta de enfermeira/administradora municipal).
+2. Copie o UID dessa conta e crie/atualize o documento `usuarios/{UID}` no Firestore com os campos `nome`, `email`, `perfil: "desenvolvedora"` e `ativo: true`.
+3. Em Vercel → Project Settings → Environment Variables, configure `DESENVOLVEDOR_UIDS` com o UID autorizado. Para múltiplas contas autorizadas, use UIDs separados por vírgula. Não use e-mail como substituto do UID.
+4. Faça redeploy após salvar a variável.
+
+### Coleções comerciais
+
+- `assinaturas/{ubsId}`: valor mensal, vencimento, tolerância, observação e metadados de atualização.
+- `pagamentosAssinaturas/{id}`: histórico de pagamentos confirmados manualmente.
+- `auditoriaComercial/{id}`: registro das ações comerciais realizadas.
+
+Essas coleções são acessadas pelo servidor via Firebase Admin SDK; as regras do Firestore já negam acesso direto ao cliente para caminhos não declarados.
+
+**Importante:** nesta primeira etapa o painel registra configurações, pagamentos e auditoria, e calcula o status comercial considerando cinco dias de tolerância. A suspensão de acesso aos fluxos operacionais ainda não foi conectada deliberadamente; isso evita bloquear UBS por engano antes de uma rodada de testes e da validação de todas as APIs protegidas.

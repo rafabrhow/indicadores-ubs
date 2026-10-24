@@ -11,6 +11,7 @@ import {
 } from "react";
 
 import { auth } from "@/lib/firebase";
+import { signOut } from "firebase/auth";
 import { useAuth } from "@/context/AuthContext";
 
 /**
@@ -286,6 +287,28 @@ export function DashboardCacheProvider({
           });
 
           const dadosResposta = await resposta.json();
+
+          if (
+            resposta.status === 403 &&
+            dadosResposta?.codigo === "ASSINATURA_PROFISSIONAL_INATIVA"
+          ) {
+            cacheRef.current.clear();
+            setDados(null);
+            setAcsAtivos(0);
+            setPacientes(0);
+            setPacientesSituacao([]);
+            setVersaoDados(null);
+            setCompetencia(null);
+            setAtualizadoEm(null);
+            await signOut(auth);
+            if (typeof window !== "undefined") {
+              window.location.replace("/login?motivo=assinatura-pendente");
+            }
+            throw new Error(
+              dadosResposta.mensagem ||
+                "Acesso suspenso por pagamento pendente. Regularize sua assinatura para voltar a acessar o sistema.",
+            );
+          }
 
           if (!resposta.ok || !dadosResposta.sucesso) {
             throw new Error(

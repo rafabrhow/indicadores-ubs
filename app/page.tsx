@@ -1,11 +1,11 @@
-import { HeartPulse, Stethoscope, Users } from "lucide-react";
+
+import { HeartPulse, Stethoscope, Users, Settings } from "lucide-react";
 import Link from "next/link";
 
 export default function Home() {
   return (
     <main className="min-h-screen bg-[#F8F7FF] px-4 py-8">
       <div className="mx-auto flex min-h-[90vh] w-full max-w-md flex-col justify-center">
-
         {/* Logo */}
         <div className="text-center">
           <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-2xl bg-white shadow-sm">
@@ -28,7 +28,6 @@ export default function Home() {
           <h2 className="text-2xl font-bold text-[#211A4A]">
             Quem é você?
           </h2>
-
           <p className="mt-2 text-sm text-slate-500">
             Selecione seu perfil para continuar
           </p>
@@ -36,11 +35,10 @@ export default function Home() {
 
         {/* Perfis */}
         <div className="mt-6 space-y-4">
-
-          {/* Enfermeira */}
+          {/* Administrador / Enfermeiro */}
           <Link
             href="/login"
-            className="group flex min-h-[116px] items-center gap-4 rounded-2xl border border-slate-200 bg-white p-5 transition-all hover:border-[#7C3AED]/30 hover:shadow-md"
+            className="group flex min-h-[116px] items-center gap-4 rounded-2xl border border-slate-200 bg-white p-5 transition-all hover:-translate-y-0.5 hover:border-[#7C3AED]/30 hover:shadow-md"
           >
             <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-[#EDE9FE]">
               <Stethoscope className="h-7 w-7 text-[#7C3AED]" />
@@ -50,7 +48,6 @@ export default function Home() {
               <h3 className="text-base font-bold text-[#211A4A]">
                 Administrador(a)/Enfermeiro(a)
               </h3>
-
               <p className="mt-1 text-sm leading-5 text-slate-500">
                 Gerencie pacientes e acompanhe os indicadores da UBS.
               </p>
@@ -64,7 +61,7 @@ export default function Home() {
           {/* ACS */}
           <Link
             href="/acs-login"
-            className="group flex min-h-[116px] items-center gap-4 rounded-2xl border border-slate-200 bg-white p-5 transition-all hover:border-emerald-300 hover:shadow-md"
+            className="group flex min-h-[116px] items-center gap-4 rounded-2xl border border-slate-200 bg-white p-5 transition-all hover:-translate-y-0.5 hover:border-emerald-300 hover:shadow-md"
           >
             <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-emerald-50">
               <Users className="h-7 w-7 text-emerald-500" />
@@ -74,7 +71,6 @@ export default function Home() {
               <h3 className="text-base font-bold text-[#211A4A]">
                 Agente Comunitário de Saúde
               </h3>
-
               <p className="mt-1 text-sm leading-5 text-slate-500">
                 Consulte o acompanhamento dos pacientes da sua área.
               </p>
@@ -85,6 +81,28 @@ export default function Home() {
             </span>
           </Link>
 
+          {/* Gerenciamento */}
+          <Link
+            href="/desenvolvedor"
+            className="group flex min-h-[100px] items-center gap-4 rounded-2xl border border-slate-200 bg-white p-5 transition-all hover:-translate-y-0.5 hover:border-sky-300 hover:shadow-md"
+          >
+            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-sky-50">
+              <Settings className="h-7 w-7 text-sky-600 transition-transform duration-300 group-hover:rotate-45" />
+            </div>
+
+            <div className="min-w-0 flex-1">
+              <h3 className="text-base font-bold text-[#211A4A]">
+                Gerenciamento
+              </h3>
+              <p className="mt-1 text-sm leading-5 text-slate-500">
+                Acesse o painel de gerenciamento de assinaturas e profissionais.
+              </p>
+            </div>
+
+            <span className="text-2xl text-slate-400 transition-transform group-hover:translate-x-1">
+              ›
+            </span>
+          </Link>
         </div>
 
         <p className="mt-8 text-center text-xs text-slate-400">

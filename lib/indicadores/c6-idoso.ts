@@ -1,4 +1,3 @@
-import "server-only";
 
 export type PraticaC6 = "A" | "B" | "C" | "D";
 
@@ -42,9 +41,24 @@ function numero(v: unknown): number | null {
 function dataBR(v: unknown): Date | null {
   const s = texto(v);
   const m = s.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+
   if (!m) return null;
-  const d = new Date(Number(m[3]), Number(m[2]) - 1, Number(m[1]));
-  return Number.isNaN(d.getTime()) ? null : d;
+
+  const dia = Number(m[1]);
+  const mes = Number(m[2]);
+  const ano = Number(m[3]);
+  const data = new Date(ano, mes - 1, dia);
+
+  // Rejeita datas inexistentes, como 31/02/2026.
+  if (
+    data.getFullYear() !== ano ||
+    data.getMonth() !== mes - 1 ||
+    data.getDate() !== dia
+  ) {
+    return null;
+  }
+
+  return data;
 }
 
 function dentroDos12Meses(data: Date | null, referencia: Date): boolean {
@@ -53,19 +67,26 @@ function dentroDos12Meses(data: Date | null, referencia: Date): boolean {
   return dias >= 0 && dias <= 365;
 }
 
-function primeiroCampo(dados: Record<string, unknown>, aliases: string[]): unknown {
+function primeiroCampo(
+  dados: Record<string, unknown>,
+  aliases: string[],
+): unknown {
   const entradas = Object.entries(dados);
+
   for (const alias of aliases) {
     const alvo = normalizar(alias);
     const encontrado = entradas.find(([chave]) => normalizar(chave) === alvo);
+
     if (encontrado && texto(encontrado[1]) !== "") return encontrado[1];
   }
+
   return "";
 }
 
 function parseVisitas(valor: unknown): Date[] {
   const s = texto(valor);
   if (!s || s === "-") return [];
+
   return s
     .split(/\s+e\s+/i)
     .map(dataBR)
@@ -82,6 +103,7 @@ function duasVisitasValidas(valor: unknown, referencia: Date): boolean {
       const dias = Math.floor(
         (visitas[j].getTime() - visitas[i].getTime()) / 86400000,
       );
+
       if (dias >= 30) return true;
     }
   }
@@ -112,21 +134,24 @@ export function avaliarC6(
   const diasMedico = numero(
     primeiroCampo(dados, ["Dias desde o último atendimento médico"]),
   );
+
   const diasEnfermagem = numero(
     primeiroCampo(dados, ["Dias desde o último atendimento de enfermagem"]),
   );
 
-  const dataPesoAltura = dataBR(
-    primeiroCampo(dados, ["Data da última medição de peso e altura"]),
-  );
+  const campoDataPesoAltura = primeiroCampo(dados, [
+    "Data da última medição de peso e altura",
+  ]);
+  const dataPesoAltura = dataBR(campoDataPesoAltura);
 
   const visitas = primeiroCampo(dados, ["Últimas visitas domiciliares"]);
-
   const influenza = primeiroCampo(dados, ["Influenza (últimos 12 meses)"]);
 
   const a =
     (diasMedico !== null && diasMedico >= 0 && diasMedico <= 365) ||
-    (diasEnfermagem !== null && diasEnfermagem >= 0 && diasEnfermagem <= 365);
+    (diasEnfermagem !== null &&
+      diasEnfermagem >= 0 &&
+      diasEnfermagem <= 365);
 
   const b = dentroDos12Meses(dataPesoAltura, referencia);
   const c = duasVisitasValidas(visitas, referencia);
@@ -156,9 +181,7 @@ export function avaliarC6(
       atingida: b,
       percentual: b ? 100 : 0,
       detalhe: b
-        ? `Última medição simultânea registrada em ${texto(
-            primeiroCampo(dados, ["Data da última medição de peso e altura"]),
-          )}.`
+        ? `Última medição simultânea registrada em ${texto(campoDataPesoAltura)}.`
         : "Não há registro simultâneo de peso e altura nos últimos 12 meses.",
     },
     {

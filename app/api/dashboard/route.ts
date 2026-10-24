@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { adminAuth, adminDb } from "@/lib/firebase-admin";
+import { verificarAssinaturaProfissional, respostaAssinaturaNegada } from "@/lib/assinatura-profissional";
 import {
   buscarCacheDashboard,
   buscarCacheSituacaoPacientes,
@@ -66,6 +67,9 @@ export async function GET(request: Request) {
         { status: 403 },
       );
     }
+
+    const assinatura = await verificarAssinaturaProfissional(decoded.uid);
+    if (!assinatura.permitido) return respostaAssinaturaNegada(assinatura);
 
     const ubsId = usuario.ubsId;
 

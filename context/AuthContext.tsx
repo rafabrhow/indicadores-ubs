@@ -14,7 +14,7 @@ import { doc, getDoc } from "firebase/firestore";
 import { auth } from "@/lib/firebase";
 import { db } from "@/lib/firestore";
 
-type Perfil = "enfermeira" | "acs" | "administrador_municipal";
+type Perfil = "enfermeira" | "acs" | "administrador_municipal" | "desenvolvedor";
 
 interface UsuarioSistema {
   uid: string;
@@ -89,7 +89,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
         if (
           dados.ativo !== true ||
-          !["enfermeira", "acs", "administrador_municipal"].includes(
+          !["enfermeira", "acs", "administrador_municipal", "desenvolvedor"].includes(
             perfil ?? ""
           )
         ) {
@@ -97,6 +97,20 @@ export function AuthProvider({ children }: AuthProviderProps) {
           await signOut(auth);
           setUsuarioAuth(null);
           setUsuario(null);
+          setUbs(null);
+          return;
+        }
+
+        // A conta de desenvolvedor é separada dos perfis operacionais e não pertence a uma UBS.
+        // A autorização comercial real também é validada no servidor pela variável DESENVOLVEDOR_UIDS.
+        if (perfil === "desenvolvedor") {
+          setUsuario({
+            uid: user.uid,
+            nome: dados.nome ?? "Desenvolvedor",
+            email: dados.email ?? user.email ?? "",
+            perfil,
+            ativo: true,
+          });
           setUbs(null);
           return;
         }
@@ -142,6 +156,38 @@ export function AuthProvider({ children }: AuthProviderProps) {
           setUsuario(null);
           setUbs(null);
           return;
+        }
+
+        // Valida a assinatura no servidor antes de liberar a sessão operacional
+        // da enfermeira. A API verifica a assinatura pelo UID autenticado.
+        if (perfil === "enfermeira") {
+          try {
+            const token = await user.getIdToken();
+            const respostaAcesso = await fetch("/api/dashboard", {
+              method: "GET",
+              cache: "no-store",
+              headers: { Authorization: `Bearer ${token}`, "Cache-Control": "no-cache" },
+            });
+            const dadosAcesso = await respostaAcesso.json().catch(() => ({}));
+
+            if (
+              respostaAcesso.status === 403 &&
+              dadosAcesso?.codigo === "ASSINATURA_PROFISSIONAL_INATIVA"
+            ) {
+              await signOut(auth);
+              setUsuarioAuth(null);
+              setUsuario(null);
+              setUbs(null);
+              if (typeof window !== "undefined") {
+                window.location.replace("/login?motivo=assinatura-pendente");
+              }
+              return;
+            }
+          } catch (erroValidacao) {
+            // Falhas de rede não são tratadas como inadimplência; a API continua
+            // protegendo os dados a cada requisição operacional.
+            console.error("Não foi possível validar a assinatura no início da sessão:", erroValidacao);
+          }
         }
 
         const usuarioSistema: UsuarioSistema = {

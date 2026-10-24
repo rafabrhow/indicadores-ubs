@@ -28,6 +28,12 @@ import { useEffect, useMemo, useState } from "react";
 import { db } from "@/lib/firestore";
 import { useAuth } from "@/context/AuthContext";
 import { avaliarC5Hipertensao, type ResultadoC5Hipertensao } from "@/lib/indicadores/c5-hipertensao";
+import { avaliarC2Infantil } from "@/lib/indicadores/c2-infantil";
+import { avaliarC3Gestacao } from "@/lib/indicadores/c3-gestacao";
+import { avaliarC4Diabetes } from "@/lib/indicadores/c4-diabetes";
+import { avaliarC6 } from "@/lib/indicadores/c6-idoso";
+import { avaliarC7 } from "@/lib/indicadores/c7-mulher";
+import { avaliarBucal } from "@/lib/indicadores/bucal";
 
 type DadosPaciente = Record<string, unknown>;
 
@@ -294,6 +300,123 @@ export default function PacienteDetalhePage() {
 
       return true;
     });
+  }, [paciente]);
+
+  // Calcula as boas práticas de cada indicador a partir dos mesmos dados do PEC.
+  // Não exibe campos brutos aqui: esses continuam disponíveis no Histórico de Registros.
+  const outrosIndicadores = useMemo(() => {
+    type PraticaResumo = {
+      codigo: string;
+      titulo: string;
+      atingida: boolean | null;
+      pontos: number | null;
+      detalhe: string;
+      indisponivel?: boolean;
+    };
+    type IndicadorResumo = {
+      codigo: string;
+      titulo: string;
+      subtitulo: string;
+      pontuacao: number | null;
+      classificacao: string;
+      praticas: PraticaResumo[];
+      aviso?: string;
+      dataImportacao?: string;
+    };
+
+    const resumo = paciente?.resumoOperacionalPEC;
+    if (!resumo || typeof resumo !== "object" || Array.isArray(resumo)) return [] as IndicadorResumo[];
+
+    const resultado: IndicadorResumo[] = [];
+    for (const [chave, valor] of Object.entries(resumo as Record<string, unknown>)) {
+      if (!valor || typeof valor !== "object" || Array.isArray(valor)) continue;
+      const registro = valor as Record<string, unknown>;
+      const codigoChave = normalizarTexto(chave);
+      if (codigoChave === "c5") continue; // C5 já aparece no cartão principal.
+
+      const dadosOriginais = registro.dadosEspecificos && typeof registro.dadosEspecificos === "object" && !Array.isArray(registro.dadosEspecificos)
+        ? registro.dadosEspecificos as Record<string, unknown>
+        : {};
+      const listaTematica = typeof registro.listaTematica === "string" ? registro.listaTematica : chave;
+      const timestamp = registro.importacaoCriadoEm as { toDate?: () => Date } | undefined;
+      const referenciaTexto = [
+        registro.referencia,
+        registro.dataImportacao,
+        registro.criadoEm,
+      ].find((valor) => typeof valor === "string" && valor.trim()) as string | undefined;
+      const referencia = timestamp?.toDate
+        ? timestamp.toDate()
+        : referenciaTexto && !Number.isNaN(Date.parse(referenciaTexto))
+          ? new Date(referenciaTexto)
+          : null;
+      if (Object.keys(dadosOriginais).length === 0) continue;
+
+      // Alguns relatórios temáticos não repetem os dados demográficos que já
+      // existem no cadastro do paciente. Completamos somente campos ausentes,
+      // sem substituir os valores específicos importados do PEC.
+      const nascimentoCadastro = campo(paciente ?? {}, "dataNascimento", "Data de nascimento");
+      const nascimentoNormalizado = (() => {
+        const valor = String(dadosOriginais["Data de nascimento"] ?? nascimentoCadastro ?? "").trim();
+        const iso = valor.match(/^(\d{4})-(\d{2})-(\d{2})/);
+        return iso ? `${iso[3]}/${iso[2]}/${iso[1]}` : valor;
+      })();
+      const dados: Record<string, unknown> = {
+        ...dadosOriginais,
+        id: dadosOriginais.id ?? paciente?.id,
+        Nome: dadosOriginais.Nome ?? dadosOriginais.nome ?? paciente?.nome,
+        CPF: dadosOriginais.CPF ?? dadosOriginais.cpf ?? paciente?.cpf ?? paciente?.CPF,
+        CNS: dadosOriginais.CNS ?? dadosOriginais.cns ?? paciente?.cns ?? paciente?.CNS,
+        "Data de nascimento": nascimentoNormalizado,
+        Sexo: dadosOriginais.Sexo ?? dadosOriginais.sexo ?? paciente?.sexo ?? paciente?.Sexo,
+        Idade: dadosOriginais.Idade ?? dadosOriginais.idade ?? paciente?.idade ?? paciente?.Idade,
+      };
+
+      const mapearPraticas = (praticas: Array<{ codigo: string; titulo: string; pontos?: number | null; atingida: boolean; detalhe?: string; status?: string }>): PraticaResumo[] =>
+        praticas.map((p) => ({ codigo: p.codigo, titulo: p.titulo, atingida: p.status === "nao_aplicavel" ? null : p.atingida, pontos: p.status === "nao_aplicavel" ? null : (typeof p.pontos === "number" ? p.pontos : null), detalhe: p.detalhe || (p.status === "nao_aplicavel" ? "Ainda não aplicável para este paciente." : "") }));
+
+      if (codigoChave === "c2" || normalizarTexto(listaTematica).includes("desenvolvimento infantil")) {
+        const r = avaliarC2Infantil(dados, { referencia: referencia ?? new Date(), metadados: { listaTematica } });
+        if (!r.elegivel) continue;
+        resultado.push({ codigo: "C2", titulo: "Cuidado no desenvolvimento infantil", subtitulo: listaTematica, pontuacao: r.pontuacao, classificacao: r.classificacao, praticas: mapearPraticas(r.praticas), dataImportacao: referencia ? referencia.toLocaleDateString("pt-BR") : undefined });
+      } else if (codigoChave === "c3" || normalizarTexto(listaTematica).includes("gestacao") || normalizarTexto(listaTematica).includes("gestação")) {
+        const r = avaliarC3Gestacao(dados, { referencia: referencia ?? new Date(), metadados: { listaTematica } });
+        if (!r.elegivel) continue;
+        resultado.push({ codigo: "C3", titulo: "Cuidado na gestação e puerpério", subtitulo: listaTematica, pontuacao: r.pontuacao, classificacao: r.classificacao, praticas: mapearPraticas(r.praticas), dataImportacao: referencia ? referencia.toLocaleDateString("pt-BR") : undefined });
+      } else if (codigoChave === "c4" || normalizarTexto(listaTematica).includes("diabetes")) {
+        const r = avaliarC4Diabetes(dados, { referencia: referencia ?? new Date(), metadados: { listaTematica } });
+        if (!r.elegivel) continue;
+        resultado.push({ codigo: "C4", titulo: "Cuidado da pessoa com diabetes", subtitulo: listaTematica, pontuacao: r.pontuacao, classificacao: r.classificacao, praticas: mapearPraticas(r.praticas), dataImportacao: referencia ? referencia.toLocaleDateString("pt-BR") : undefined });
+      } else if (codigoChave === "c6" || normalizarTexto(listaTematica).includes("pessoa idosa")) {
+        const r = avaliarC6(dados, referencia ?? new Date());
+        resultado.push({ codigo: "C6", titulo: "Cuidado da pessoa idosa", subtitulo: listaTematica, pontuacao: r.pontuacao, classificacao: r.classificacao, praticas: mapearPraticas(r.praticas), dataImportacao: referencia ? referencia.toLocaleDateString("pt-BR") : undefined });
+      } else if (codigoChave === "c7" || normalizarTexto(listaTematica).includes("mulher")) {
+        const r = avaliarC7([{ ...dados, id: paciente?.id ?? dados.id, dadosBase: dados, dadosEspecificos: dados }], referencia ?? new Date());
+        const pessoa = r.pacientes[0];
+        if (!pessoa) continue;
+        const titulos: Record<string, string> = { A: "Rastreamento do câncer do colo do útero", B: "Vacinação contra HPV", C: "Saúde sexual e reprodutiva", D: "Rastreamento do câncer de mama" };
+        const praticas: PraticaResumo[] = (["A", "B", "C", "D"] as const).map((codigo) => ({
+          codigo,
+          titulo: titulos[codigo],
+          atingida: pessoa.praticas[codigo],
+          pontos: null,
+          detalhe: pessoa.detalhes[codigo] || r.praticas[codigo].descricao,
+          indisponivel: !r.praticas[codigo].disponivel,
+        }));
+        resultado.push({ codigo: "C7", titulo: "Saúde da mulher — prevenção do câncer", subtitulo: listaTematica, pontuacao: r.pontuacao, classificacao: r.classificacao, praticas, aviso: r.motivoIncompleto, dataImportacao: referencia ? referencia.toLocaleDateString("pt-BR") : undefined });
+      } else if (codigoChave.includes("bucal") || normalizarTexto(listaTematica).includes("saude bucal")) {
+        const r = avaliarBucal([{ ...dados, dadosBase: dados, dadosEspecificos: dados }]);
+        const pessoa = r.pacientes[0];
+        if (!pessoa) continue;
+        const titulos: Record<string, string> = { B1: "Primeira consulta odontológica programada", B2: "Tratamento odontológico concluído", B3: "Exodontias registradas", B4: "Escovação supervisionada", B5: "Procedimentos preventivos", B6: "Tratamento restaurador atraumático" };
+        const praticas: PraticaResumo[] = (["B1", "B2", "B3", "B4", "B5", "B6"] as const).map((codigo) => {
+          const campoPessoa = ({ B1: pessoa.b1, B2: pessoa.b2, B3: pessoa.b3, B4: pessoa.b4, B5: pessoa.b5, B6: pessoa.b6 })[codigo];
+          const p = r.praticas[codigo];
+          return { codigo, titulo: titulos[codigo], atingida: campoPessoa, pontos: null, detalhe: pessoa.detalhes[codigo] ? `Registro no PEC: ${pessoa.detalhes[codigo]}` : `Não foi localizado registro desta prática no relatório. ${p.motivo || "Confira a importação no histórico."}`, indisponivel: false };
+        });
+        resultado.push({ codigo: "B1–B6", titulo: "Saúde bucal", subtitulo: listaTematica, pontuacao: null, classificacao: "Práticas individuais", praticas, aviso: "As práticas mostram os registros localizados para este paciente. A pontuação oficial de algumas práticas depende de denominadores que o relatório individual do PEC não fornece.", dataImportacao: referencia ? referencia.toLocaleDateString("pt-BR") : undefined });
+      }
+    }
+    return resultado;
   }, [paciente]);
 
   if (carregando || !usuario || carregandoPaciente) {
@@ -670,6 +793,90 @@ export default function PacienteDetalhePage() {
                     Os indicadores oficiais são calculados somente quando a
                     importação contém os dados necessários para a regra técnica.
                   </p>
+                </div>
+              </section>
+            )}
+
+            {outrosIndicadores.length > 0 && (
+              <section className="mt-4 space-y-3">
+                <div>
+                  <h3 className="text-sm font-bold text-[#003B8E]">
+                    Outros indicadores deste paciente
+                  </h3>
+                  <p className="mt-1 text-[9px] text-gray-500">
+                    Temáticas identificadas nas importações do PEC e dados disponíveis para conferência.
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 gap-3">
+                  {outrosIndicadores.map((indicador) => (
+                    <article
+                      key={indicador.codigo}
+                      className="overflow-hidden rounded-2xl border border-[#DDEAF2] bg-white shadow-[0_5px_14px_rgba(0,59,142,0.06)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_10px_20px_rgba(0,169,232,0.10)]"
+                    >
+                      <div className="flex items-start justify-between gap-3 border-b border-gray-100 p-4">
+                        <div className="min-w-0">
+                          <p className="text-xs font-bold text-[#003B8E]">
+                            {indicador.codigo} — {indicador.titulo}
+                          </p>
+                          <p className="mt-1 text-[9px] text-gray-500">
+                            {indicador.subtitulo}
+                          </p>
+                        </div>
+                        <span className="shrink-0 rounded-full bg-[#E5F5FB] px-2 py-1 text-[8px] font-bold text-[#003B8E]">
+                          PEC
+                        </span>
+                      </div>
+
+                      <div className="p-3 sm:p-4">
+                        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                          <div>
+                            <p className="text-[10px] font-semibold text-slate-600">Pontuação do indicador</p>
+                            <p className="mt-0.5 text-xl font-extrabold text-[#003B8E]">
+                              {indicador.pontuacao === null ? "—" : `${indicador.pontuacao}/100`}
+                            </p>
+                          </div>
+                          <span className="rounded-full bg-[#E5F5FB] px-2.5 py-1 text-[9px] font-bold text-[#003B8E]">
+                            {indicador.classificacao}
+                          </span>
+                        </div>
+
+                        <div className="grid gap-2 sm:grid-cols-2">
+                          {indicador.praticas.map((pratica) => {
+                            const atingida = pratica.atingida === true;
+                            const naoAplicavel = pratica.atingida === null || pratica.indisponivel;
+                            const classe = naoAplicavel
+                              ? "border-slate-200 bg-slate-50"
+                              : atingida
+                                ? "border-emerald-300 bg-gradient-to-br from-emerald-50 to-white"
+                                : "border-red-300 bg-gradient-to-br from-red-50 to-white";
+                            return (
+                              <div key={pratica.codigo} className={`min-w-0 rounded-xl border p-3 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md ${classe}`}>
+                                <div className="flex items-start gap-2">
+                                  {naoAplicavel ? <Activity size={15} className="mt-0.5 shrink-0 text-slate-400" /> : atingida ? <CheckCircle2 size={15} className="mt-0.5 shrink-0 text-emerald-600" /> : <XCircle size={15} className="mt-0.5 shrink-0 text-red-500" />}
+                                  <div className="min-w-0 flex-1">
+                                    <p className="text-[10px] font-bold leading-snug text-[#003B8E]">{pratica.codigo}. {pratica.titulo}</p>
+                                    <p className="mt-1 text-[9px] leading-relaxed text-slate-500">{pratica.detalhe || (naoAplicavel ? "Não foi possível avaliar com os dados disponíveis." : atingida ? "Prática atingida conforme os dados do PEC." : "Prática pendente: requer atenção da equipe.")}</p>
+                                  </div>
+                                  <span className={`shrink-0 rounded-full px-2 py-1 text-[8px] font-extrabold ${naoAplicavel ? "bg-slate-200 text-slate-600" : atingida ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-600"}`}>
+                                    {naoAplicavel ? "N/D" : atingida ? (pratica.pontos !== null ? `${pratica.pontos} pts` : "Atingida") : (pratica.pontos !== null ? `${pratica.pontos} pts` : "Atenção")}
+                                  </span>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                        {indicador.aviso && <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-2.5 text-[9px] leading-relaxed text-amber-800">{indicador.aviso}</p>}
+                      </div>
+                      <div className="border-t border-[#DDEAF2] bg-[#F7FBFD] px-4 py-2">
+                        <p className="text-[8px] text-gray-400">
+                          {indicador.dataImportacao
+                            ? `Importação: ${indicador.dataImportacao}`
+                            : "Data da importação não informada"}
+                        </p>
+                      </div>
+                    </article>
+                  ))}
                 </div>
               </section>
             )}

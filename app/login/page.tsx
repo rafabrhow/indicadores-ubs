@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -28,6 +28,13 @@ export default function LoginPage() {
   const [erro, setErro] = useState("");
   const [sucesso, setSucesso] = useState("");
   const [enviandoRecuperacao, setEnviandoRecuperacao] = useState(false);
+
+  useEffect(() => {
+    const parametros = new URLSearchParams(window.location.search);
+    if (parametros.get("motivo") === "assinatura-pendente") {
+      setErro("Acesso suspenso por pagamento pendente. Regularize sua assinatura para voltar a acessar o sistema.");
+    }
+  }, []);
 
   async function handleRecuperarSenha() {
     setErro("");
@@ -123,6 +130,28 @@ export default function LoginPage() {
         throw new Error("Este usuário não possui um vínculo válido com uma UBS.");
       }
 
+      // Não redireciona a enfermeira para a área interna até o servidor
+      // confirmar que a assinatura individual está autorizada.
+      if (usuario.perfil === "enfermeira") {
+        const token = await resultado.user.getIdToken();
+        const respostaAcesso = await fetch("/api/dashboard", {
+          method: "GET",
+          cache: "no-store",
+          headers: { Authorization: `Bearer ${token}`, "Cache-Control": "no-cache" },
+        });
+        const dadosAcesso = await respostaAcesso.json().catch(() => ({}));
+
+        if (
+          respostaAcesso.status === 403 &&
+          dadosAcesso?.codigo === "ASSINATURA_PROFISSIONAL_INATIVA"
+        ) {
+          throw new Error(
+            dadosAcesso.mensagem ||
+              "Acesso suspenso por pagamento pendente. Regularize sua assinatura para voltar a acessar o sistema.",
+          );
+        }
+      }
+
       router.push(usuario.perfil === "acs" ? "/acs" : "/dashboard");
     } catch (error: unknown) {
       console.error("Erro no login:", error);
@@ -181,7 +210,7 @@ export default function LoginPage() {
             </div>
 
             <p className="text-sm text-white/70">
-              Acesso seguro para profissionais autorizados. V.8
+              Acesso seguro para profissionais autorizados. V.9
             </p>
           </div>
 
